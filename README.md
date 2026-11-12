@@ -36,7 +36,7 @@ So the same words give `s[::-1]` in `strings.py` and `fn rev(s: &str) -> String 
 ## Tray menu
 
 - **Backend:** Claude or Gemini (see below).
-- **Indicator:** small corner light (default) or a full bar with instructions next to the cursor.
+- **Indicator:** small corner light (default) or a full bar with instructions next to the cursor. Also here: turn the `. . .` animation in the text field on or off (when off, your request stays visible until the answer replaces it).
 - **Clear AI context:** throws away the warm CLI and starts a fresh one.
 - **Pause**, **Edit config**, **Reload config**, **Open log**, **Start with Windows**, **Exit**.
 
@@ -64,7 +64,7 @@ Claude runs with no tools, no MCP servers and no user settings. CLI processes cl
 | `ClaudeModel` / `AgyModel` | `haiku` / `gemini-3.8-flash-low` | `agy models` lists the Gemini options |
 | `ClaudePath` / `AgyPath` | empty | Empty = find on PATH |
 | `Indicator` | `icon` | `icon` (corner light) or `bar` |
-| `ThinkingDots` | `true` | Animate `. . .` in the text field while waiting |
+| `ThinkingDots` | `true` | Animate `. . .` in the text field while waiting (tray → Indicator) |
 | `SendWindowTitle` | `true` | Include the window title in the context |
 | `SingleLine` | `true` | Keep only the first line. A newline would run a command in a terminal |
 | `TypingDelayMs` | `5` | Pause between typed keys |

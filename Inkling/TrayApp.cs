@@ -20,7 +20,7 @@ internal sealed class TrayApp : ApplicationContext
     private readonly CaptureController _capture;
     private AppConfig _config;
     private IAiBackend _backend;
-    private readonly ToolStripMenuItem _claudeItem, _agyItem, _pauseItem, _startupItem, _iconItem, _barItem;
+    private readonly ToolStripMenuItem _claudeItem, _agyItem, _pauseItem, _startupItem, _iconItem, _barItem, _dotsItem;
 
     public TrayApp()
     {
@@ -40,11 +40,12 @@ internal sealed class TrayApp : ApplicationContext
         _iconItem = new ToolStripMenuItem("Small icon (top-left of screen)", null, (_, _) => SetIndicator(IndicatorStyle.Icon));
         _barItem = new ToolStripMenuItem("Full bar with instructions", null, (_, _) => SetIndicator(IndicatorStyle.Bar));
         _pauseItem = new ToolStripMenuItem("Pause", null, (_, _) => TogglePause());
+        _dotsItem = new ToolStripMenuItem("\". . .\" animation in text field", null, (_, _) => ToggleDots());
         _startupItem = new ToolStripMenuItem("Start with Windows", null, (_, _) => ToggleStartup()) { Checked = IsStartupEnabled() };
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(new ToolStripMenuItem("Backend", null, _claudeItem, _agyItem));
-        menu.Items.Add(new ToolStripMenuItem("Indicator", null, _iconItem, _barItem));
+        menu.Items.Add(new ToolStripMenuItem("Indicator", null, _iconItem, _barItem, new ToolStripSeparator(), _dotsItem));
         menu.Items.Add("Clear AI context (fresh CLI)", null, (_, _) =>
         {
             _backend.ClearContext();
@@ -110,6 +111,14 @@ internal sealed class TrayApp : ApplicationContext
         RefreshMenu();
     }
 
+    private void ToggleDots()
+    {
+        // Read per request, so this takes effect from the next one.
+        _config.ThinkingDots = !_config.ThinkingDots;
+        _config.Save();
+        RefreshMenu();
+    }
+
     private void TogglePause()
     {
         _capture.Paused = !_capture.Paused;
@@ -123,6 +132,7 @@ internal sealed class TrayApp : ApplicationContext
         _claudeItem.Checked = _backend is ClaudeBackend;
         _agyItem.Checked = _backend is AgyBackend;
         _pauseItem.Checked = _capture.Paused;
+        _dotsItem.Checked = _config.ThinkingDots;
         _iconItem.Checked = _overlay.Style == IndicatorStyle.Icon;
         _barItem.Checked = _overlay.Style == IndicatorStyle.Bar;
         var text = $"Inkling · {_capture.Hotkey} · {_backend.DisplayName}{(_capture.Paused ? " · paused" : "")}";
