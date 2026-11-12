@@ -486,3 +486,6 @@ dist/
 
 # Release notes are part of the repo.
 !docs/releases/
+
+# Claude Code project notes (local only)
+CLAUDE.md

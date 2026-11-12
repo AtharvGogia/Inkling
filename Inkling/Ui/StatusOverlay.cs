@@ -5,11 +5,11 @@ using static Inkling.Native;
 
 namespace Inkling.Ui;
 
-/// <summary>Icon = the small "i_rdy" badge in the screen's top-right corner (config value "icon"); Bar = text bar by the cursor.</summary>
+/// <summary>Icon = the small "i_rdy" badge in the screen's top-left corner (config value "icon"); Bar = text bar by the caret.</summary>
 public enum IndicatorStyle { Icon, Bar }
 
 /// <summary>
-/// Shows capture state: the small "i_rdy" badge in the screen's top-right corner (default), or a text bar with
+/// Shows capture state: the small "i_rdy" badge in the screen's top-left corner (default), or a text bar with
 /// instructions near the caret. Neither window takes focus or receives clicks.
 /// </summary>
 internal sealed class StatusOverlay : IDisposable
@@ -29,6 +29,7 @@ internal sealed class StatusOverlay : IDisposable
     {
         _ = _icon.Handle;
         _ = _bar.Handle;
+        CaretLocator.Warm();
     }
 
     public static IndicatorStyle Parse(string s) =>
@@ -89,28 +90,19 @@ internal sealed class StatusOverlay : IDisposable
         _bar.Dispose();
     }
 
-    /// <summary>Below the text caret when the app exposes one; otherwise bottom-centre of the target window.</summary>
-    internal static Point AnchorPoint(nint target, int w, int h)
+    /// <summary>Just below the text caret, or next to the mouse pointer when no caret was found. Above the caret
+    /// when there's no room below.</summary>
+    internal static Point AnchorPoint(Rectangle? caret, int w, int h)
     {
-        var tid = GetWindowThreadProcessId(target, out _);
-        var gui = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
         Point p;
-        if (GetGUIThreadInfo(tid, ref gui) && gui.hwndCaret != 0)
-        {
-            var pt = new POINT { X = gui.rcCaret.Right, Y = gui.rcCaret.Bottom };
-            ClientToScreen(gui.hwndCaret, ref pt);
-            p = new Point(pt.X + 4, pt.Y + 4);
-        }
-        else if (target != 0 && GetWindowRect(target, out var r))
-        {
-            p = new Point((r.Left + r.Right - w) / 2, r.Bottom - h - 40);
-        }
+        if (caret is { } c) p = new Point(c.Left, c.Bottom + 6);
         else
         {
-            GetCursorPos(out var c);
-            p = new Point(c.X + 12, c.Y + 18);
+            GetCursorPos(out var m);
+            p = new Point(m.X + 14, m.Y + 20);
         }
         var screen = Screen.FromPoint(p).WorkingArea;
+        if (caret is { } c2 && p.Y + h > screen.Bottom) p.Y = c2.Top - h - 6;
         p.X = Math.Clamp(p.X, screen.Left, Math.Max(screen.Left, screen.Right - w));
         p.Y = Math.Clamp(p.Y, screen.Top, Math.Max(screen.Top, screen.Bottom - h));
         return p;
@@ -127,7 +119,7 @@ internal sealed class StatusOverlay : IDisposable
 }
 
 /// <summary>
-/// A small badge in the top-right corner of the screen, in a terminal font, on black or white to match the theme:
+/// A small badge in the top-left corner of the screen, in a terminal font, on black or white to match the theme:
 /// "i_rdy" in orange while you type, "i_thnk" in blue while thinking, "i_fin" in green when the answer is in,
 /// "i_err" in red on an error. Per-pixel alpha (UpdateLayeredWindow); never takes focus or clicks.
 /// </summary>
@@ -178,7 +170,7 @@ internal sealed class BadgeIndicator : Form
         return new Font(FontFamily.GenericMonospace, px, FontStyle.Bold, GraphicsUnit.Pixel);
     }
 
-    /// <summary>Shows the badge in the top-right corner of the screen the target window is on.</summary>
+    /// <summary>Shows the badge in the top-left corner of the screen the target window is on.</summary>
     public void Start(nint target, Mode mode)
     {
         _mode = mode;
@@ -192,7 +184,7 @@ internal sealed class BadgeIndicator : Form
             _size = new Size(text.Width + (int)Math.Round(14 * _scale), text.Height + (int)Math.Round(6 * _scale));
         }
         int margin = (int)Math.Round(8 * _scale);
-        var p = new Point(screen.WorkingArea.Right - margin - _size.Width, screen.WorkingArea.Top + margin);
+        var p = new Point(screen.WorkingArea.Left + margin, screen.WorkingArea.Top + margin);
         Bounds = new Rectangle(p, _size);
         Render();
         if (!Visible) Show();
@@ -348,23 +340,25 @@ internal sealed class BarIndicator : Form
         }
     }
 
+    private bool _wanted;        // false once hidden, so a late caret lookup can't reopen the bar
+    private nint _target;
+    private bool _locating;
+    private Rectangle? _caret;
+    private nint _caretTarget;
+
     public void HideNow()
     {
+        _wanted = false;
         _hideTimer.Stop();
         if (Visible) Hide();
     }
 
     public void Display(nint target, string text, Color accent, int autoHideMs)
     {
+        _wanted = true;
+        _target = target;
         _text = text;
         _accent = accent;
-        var size = TextRenderer.MeasureText(_text, Font);
-        var w = size.Width + 22;
-        var h = size.Height + 10;
-        var pos = StatusOverlay.AnchorPoint(target, w, h);
-        StatusOverlay.SetWindowPos(Handle, -1, pos.X, pos.Y, w, h, StatusOverlay.SWP_NOACTIVATE | StatusOverlay.SWP_SHOWWINDOW);
-        if (!Visible) Show();
-        Invalidate();
 
         _hideTimer.Stop();
         if (autoHideMs > 0)
@@ -372,6 +366,45 @@ internal sealed class BarIndicator : Form
             _hideTimer.Interval = autoHideMs;
             _hideTimer.Start();
         }
+
+        // Classic Win32 caret: instant. Otherwise ask the app through MSAA / UI Automation off the UI thread
+        // (it's a cross-process call, and Display runs inside the keyboard hook). While that runs, a bar that's
+        // already showing stays where it was; a new one waits for the answer (at most CaretLocator.TimeoutMs).
+        if (CaretLocator.Win32(target) is { } quick)
+        {
+            Place(target, quick);
+            return;
+        }
+        if (Visible && _caretTarget == target) Place(target, _caret);
+        if (_locating) return;
+        _locating = true;
+        _ = CaretLocator.FindAsync(target).ContinueWith(t =>
+        {
+            if (IsDisposed) return;
+            try
+            {
+                BeginInvoke(() =>
+                {
+                    _locating = false;
+                    if (!_wanted) return;   // hidden since
+                    Place(_target, _target == target ? t.Result : _caret);
+                });
+            }
+            catch (InvalidOperationException) { }
+        }, TaskScheduler.Default);
+    }
+
+    private void Place(nint target, Rectangle? caret)
+    {
+        _caret = caret;
+        _caretTarget = target;
+        var size = TextRenderer.MeasureText(_text, Font);
+        var w = size.Width + 22;
+        var h = size.Height + 10;
+        var pos = StatusOverlay.AnchorPoint(caret, w, h);
+        StatusOverlay.SetWindowPos(Handle, -1, pos.X, pos.Y, w, h, StatusOverlay.SWP_NOACTIVATE | StatusOverlay.SWP_SHOWWINDOW);
+        if (!Visible) Show();
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)

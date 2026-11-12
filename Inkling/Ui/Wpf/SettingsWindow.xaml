@@ -136,7 +136,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="4,4,12,8">
                             <TextBlock Text="While waiting" Style="{StaticResource Section}" />
-                            <RadioButton x:Name="IndicatorIcon" Content="“i__rdy” in the top-right corner" GroupName="Indicator" />
+                            <RadioButton x:Name="IndicatorIcon" Content="“i__rdy” in the top-left corner" GroupName="Indicator" />
                             <RadioButton x:Name="IndicatorBar" Content="Bar next to the cursor" GroupName="Indicator" Margin="0,4,0,0" />
                             <CheckBox x:Name="DotsCheck" Content="Animate “...” in the text field" Margin="0,10,0,0" />
 

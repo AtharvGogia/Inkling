@@ -17,6 +17,14 @@ It works in terminals, editors, browsers, Notepad, Excel, chat apps: anywhere yo
 
 Made by **Atharv Gogia**. Open source under the [MIT licence](LICENSE). It's a one-person side project, so if something breaks or you have an idea, I'd really like to hear about it.
 
+## Where it came from
+
+Inkling started out as a folder called "Inline AI" and one simple wish: ask a quick question without leaving the window I'm typing in. No switching to a browser tab, no copying the answer back. Just type it where it's needed and get it there.
+
+The first version answered through the Claude Code and Gemini command-line tools, kept running in the background. It worked, but each answer took around three seconds, and closer to ten when the tool had to start from cold. That's too slow for something meant to feel like autocomplete. So I switched to NVIDIA's free API, tried about 30 of its models, benchmarked the five that answered on questions from a range of subjects (commands, maths, facts, code, translation), and kept the two that were both right and quick. Now an answer often lands in under half a second.
+
+The name was picked from a shortlist with Ghostkey and Spellcast on it: an *inkling* is a small idea, which felt right for short answers. The logo took a few tries, from an ink drop shaped like a fountain-pen nib to the plain wordmark it has now. The orange square is the dot of the i, and the underscore at the end is the text cursor waiting for you to type.
+
 ## Download
 
 Get `Inkling-Setup-x.y.z.exe` from the [Releases page](https://github.com/AtharvGogia/Inkling-for-Windows/releases) and run it. It installs for your user only (no admin prompt) and includes everything it needs. Windows 11, 64-bit. It should also run on Windows 10 (1809 or later), but it hasn't been tested there, and its windows are designed for Windows 11.
@@ -45,7 +53,7 @@ Inkling checks GitHub for a new version once a day and offers it with a one-clic
 
 ### Ask
 
-Press **Ctrl+Alt+Space**, type your request, press **Enter**. A small `i_rdy` appears in the top-right corner of the screen while you type (orange). While it thinks, your text becomes a quick `...` and the corner shows `i_thnk` (blue); when the answer is in, `i_fin` (green), and then it goes away. Then the answer is typed in place of your request.
+Press **Ctrl+Alt+Space**, type your request, press **Enter**. A small `i_rdy` appears in the top-left corner of the screen while you type (orange). While it thinks, your text becomes a quick `...` and the corner shows `i_thnk` (blue); when the answer is in, `i_fin` (green), and then it goes away. Then the answer is typed in place of your request.
 
 Inkling knows which app you're in and tailors the answer to it: a bash command in a WSL terminal, a PowerShell command in PowerShell, a formula in Excel, code in the right language in your editor (from the file name in the window title), plain words in Notepad.
 
@@ -196,7 +204,7 @@ The update window shows the release's description as "what's new". Drafts and pr
 
 ## Feedback
 
-If something doesn't work, or you'd like it to do something it doesn't, [open an issue](https://github.com/AtharvGogia/Inkling-for-Windows/issues). Settings → About → *Copy diagnostics* puts the useful details on the clipboard (never your key or what you typed). Ideas are just as welcome as bugs.
+Inkling is still young, and every report of what tripped someone up makes it better. If something doesn't work, or you'd like it to do something it doesn't, [open an issue](https://github.com/AtharvGogia/Inkling-for-Windows/issues). Settings → About → *Copy diagnostics* puts the useful details on the clipboard (never your key or what you typed). Ideas are just as welcome as bugs.
 
 ## Licence
 

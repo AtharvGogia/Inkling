@@ -52,7 +52,7 @@ internal sealed class TutorialWindow : Window
                 new Para("The free key allows about 40 requests a minute. Inkling stays under that and tells you if you hit it, for example if other tools use the same key."),
             ]),
             new("2. Ask", [
-                new Para($"Press {ask} wherever you can type. A small i_rdy appears in the top-right corner of the screen: Inkling is listening."),
+                new Para($"Press {ask} wherever you can type. A small i_rdy appears in the top-left corner of the screen: Inkling is listening."),
                 new Para("Type your request and press Enter. While Inkling thinks, your text turns into “...” and the corner shows i_thnk. Then the answer is typed in its place and the corner shows i_fin for a moment."),
                 new Sub("It knows where you are"),
                 new Para("The answer fits the app: a bash command in a WSL terminal, a PowerShell command in PowerShell, a formula in Excel, code in the language of the file open in your editor, plain words in Notepad."),

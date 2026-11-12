@@ -94,7 +94,7 @@ public sealed class AppConfig
     public bool SingleLine { get; set; } = true;
     /// <summary>"short" (one word / command), "sentence" or "paragraph".</summary>
     public string AnswerLength { get; set; } = "short";
-    /// <summary>"icon" = small light in the screen's top-left corner; "bar" = text bar with instructions near the caret.</summary>
+    /// <summary>"icon" = the small "i_rdy" badge in the screen's top-left corner; "bar" = text bar with instructions near the caret.</summary>
     public string Indicator { get; set; } = "icon";
     /// <summary>While waiting, replace the request in the text field with animated "..." (restored on cancel/error).</summary>
     public bool ThinkingDots { get; set; } = true;

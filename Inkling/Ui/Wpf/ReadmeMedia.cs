@@ -207,12 +207,12 @@ internal static class ReadmeMedia
             Add(root, bar, wx + 24, wy + 34 + 12 + 26);
         }
 
-        // The "i_rdy" badge, top-right of the screen, as Inkling draws it (dark theme).
+        // The "i_rdy" badge, top-left of the screen, as Inkling draws it (dark theme).
         if (f.Light != Light.Off)
         {
             var mode = f.Light switch { Light.Thinking => BadgeIndicator.Mode.Thinking, Light.Done => BadgeIndicator.Mode.Done, _ => BadgeIndicator.Mode.Ready };
             var img = Badge(mode, BadgeIndicator.TextAt(mode, mode == BadgeIndicator.Mode.Done ? 0 : t) ?? "i_rdy");
-            Add(root, new WpfImage { Source = img, Width = img.PixelWidth, Height = img.PixelHeight }, W - 8 - img.PixelWidth, 8);
+            Add(root, new WpfImage { Source = img, Width = img.PixelWidth, Height = img.PixelHeight }, 8, 8);
         }
 
         // Key label, bottom centre.
