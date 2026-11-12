@@ -19,11 +19,11 @@ Made by **Atharv Gogia**. Open source under the [MIT licence](LICENSE). It's a o
 
 ## Where it came from
 
-Inkling started out as a folder called "Inline AI" and one simple wish: ask a quick question without leaving the window I'm typing in. No switching to a browser tab, no copying the answer back. Just type it where it's needed and get it there.
+Inkling started as a folder called "Inline AI" and one wish: ask a quick question without leaving the window I'm typing in.
 
-The first version answered through the Claude Code and Gemini command-line tools, kept running in the background. It worked, but each answer took around three seconds, and closer to ten when the tool had to start from cold. That's too slow for something meant to feel like autocomplete. So I switched to NVIDIA's free API, tried about 30 of its models, benchmarked the five that answered on questions from a range of subjects (commands, maths, facts, code, translation), and kept the two that were both right and quick. Now an answer often lands in under half a second.
+The first version went through the Claude Code and Gemini command-line tools, but answers took seconds, too slow for something meant to feel like autocomplete. Switching to NVIDIA's free API and benchmarking its models brought that to under half a second.
 
-The name was picked from a shortlist with Ghostkey and Spellcast on it: an *inkling* is a small idea, which felt right for short answers. The logo took a few tries, from an ink drop shaped like a fountain-pen nib to the plain wordmark it has now. The orange square is the dot of the i, and the underscore at the end is the text cursor waiting for you to type.
+An *inkling* is a small idea, which felt right for short answers. In the logo, the underscore is the text cursor waiting for you.
 
 ## Download
 
