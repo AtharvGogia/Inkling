@@ -1,192 +1,177 @@
-# Inkling
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/header-dark.svg">
+    <img src="docs/media/header.svg" height="80" alt="Inkling">
+  </picture>
+</p>
 
-Type a question anywhere in Windows and have it replaced in place with a short AI answer.
+Inkling puts a short answer right where you're typing, in any app on Windows. Press a shortcut, type what you want ("find files over 100mb in home", "capital of canada", "sum of A1 to A10"), press Enter, and your words turn into the answer.
 
-```
-you type:   find files over 100mb in home        ⏎
-            ...
-it becomes: find ~ -type f -size +100M
-```
+![Pressing Ctrl+Alt+Space in a terminal, typing "find files over 100mb in home", pressing Enter, and watching it become find ~ -type f -size +100M](docs/media/ask.gif)
 
-Works in any app: Windows Terminal + WSL, PowerShell, Notepad, browsers, editors. The answer is typed in, never run: you still press Enter yourself.
+It works in terminals, editors, browsers, Notepad, Excel, chat apps: anywhere you can type. Answers are typed in, never run, so you always press Enter yourself.
 
-## Install
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/AtharvGogia/Inkling?include_prereleases&label=Latest%20Release)](https://github.com/AtharvGogia/Inkling/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/AtharvGogia/Inkling/total?label=Total%20Downloads)](https://github.com/AtharvGogia/Inkling/releases)
 
-Run `Inkling-Setup-<version>.exe` (from `dist\`, or build it, see below). It installs for your user only, so no admin rights are needed. It adds a Start-menu entry and can start Inkling when you sign in. Uninstall from *Settings → Apps*. Your settings in `%APPDATA%\Inkling` are kept.
+Made by **Atharv Gogia**. Open source under the [MIT licence](LICENSE). It's a one-person side project, so if something breaks or you have an idea, I'd really like to hear about it.
 
-## Use
+## Download
 
-1. Press **Ctrl+Alt+Space**. A small Inkling light appears in the top-left corner of the screen.
-2. Type your request right where you are (e.g. at the bash prompt).
-3. Press **Enter**. Your text turns into a quick `.` `..` `...` animation while the model thinks, then the answer is typed in its place.
+Get `Inkling-Setup-x.y.z.exe` from the [Releases page](https://github.com/AtharvGogia/Inkling/releases) and run it. It installs for your user only (no admin prompt) and includes everything it needs. Windows 10 (1809 or later) or Windows 11, 64-bit.
 
-- **Esc** cancels. Before Enter, your text stays. While thinking, your request is typed back.
-- Moving the cursor (arrows, Home/End), clicking, pasting or switching windows cancels capture, since the typed text could no longer be tracked.
-- If you switch away or type while it's thinking, the answer goes to the **clipboard** instead of being typed into the wrong place.
-- **Ctrl+Alt+R** right after an answer: erase it and ask again for a different one (the model is told which answers you rejected). It works until you type, click or switch windows; otherwise Ctrl+Alt+R goes to the app as usual.
+The installer isn't code-signed, so Windows SmartScreen may say "Windows protected your PC" the first time: choose **More info → Run anyway**.
 
-### Select to ask
+Inkling answers with NVIDIA's free API, so you'll need a free key from [build.nvidia.com](https://build.nvidia.com/). The welcome window that opens on first start asks for it, checks that it works, and keeps it in Windows Credential Manager.
 
-Write the request anywhere (or paste it, edit it with the arrow keys, whatever you like), **select it** and press **Ctrl+Alt+Enter**. The selected text is sent as the request and the answer replaces the selection. Retry (Ctrl+Alt+R) works the same way afterwards.
+Inkling checks GitHub for a new version once a day and offers it with a one-click update. You can also click the tray icon → **Help → Check for updates…**.
 
-- The selection is copied with Ctrl+C and your clipboard is put back right after. The copy may still show up in Windows clipboard history (Win+V).
-- Not available in terminals (`SelectionSkipApps`): typing doesn't replace a terminal selection, and Ctrl+C would interrupt the shell. Use Ctrl+Alt+Space there.
-- With nothing selected, you get "Nothing selected" and the text is left alone. In VS Code, the whole-line copy it does when nothing is selected is detected and ignored.
+## What it does
 
-### Answer length
+### Ask
 
-Tray → *Answer length*: **One word / one command** (default), **A sentence or two**, or **A short paragraph**. With `SingleLine` on (the default), longer answers are still kept to one line.
+Press **Ctrl+Alt+Space**, type your request, press **Enter**. While it thinks, your text becomes a quick `...` and a small light in the top-left corner of the screen turns amber. Then the answer is typed in place of your request.
 
-### Context
+Inkling knows which app you're in and tailors the answer to it: a bash command in a WSL terminal, a PowerShell command in PowerShell, a formula in Excel, code in the right language in your editor (from the file name in the window title), plain words in Notepad.
 
-Every request tells the model where the answer is going:
-- the app (e.g. *Windows Terminal*, *Notepad*, *Visual Studio Code*)
-- the window title, which can show the current folder in a terminal, the file name in an editor, or the page in a browser
-- the kind of answer that fits there
-- the answer length you picked
+- **Esc** cancels. While it's thinking, Esc puts your request back.
+- Moving the cursor, clicking or switching windows while you type cancels, since Inkling can no longer tell what you typed.
+- If you switch away while it's thinking, the answer goes to the clipboard instead of into the wrong window.
 
-So the same words give `s[::-1]` in `strings.py` and `fn rev(s: &str) -> String { … }` in `strings.rs`. Set `SendWindowTitle` to `false` if you don't want window titles sent.
+### Ask about selected text
 
-## Settings
+Select some text and press **Ctrl+Alt+Enter**. The selection is the request, and the answer replaces it.
 
-Click the tray icon, or right-click it and pick *Settings…*. Changes apply straight away.
+![Selecting "translate to french: good morning, my friend" in Notepad, pressing Ctrl+Alt+Enter, and getting "Bonjour, mon ami" in its place](docs/media/select.gif)
 
-- **General:** the three shortcuts (click a box and press the new one; Backspace turns an optional one off), answer length, light/dark theme, start with Windows. Inkling refuses shortcuts that Windows or every app relies on (Ctrl+C, Win+L…) and warns when another program already uses one.
-- **Model:** Nemotron 3.5 Bolt (default) or Laguna XS 2.1, the NVIDIA API key (save, test, remove), and under *Advanced* the Claude Code / Gemini CLIs for when NVIDIA's API is down.
-- **Typing:** corner light or instruction bar, the `...` animation, typing speed, slower typing for apps that drop keys, and one-line answers.
-- **Privacy & safety:** the risky-command check, apps where Inkling stays off, and whether window titles are sent.
-- **About:** the welcome guide, request timings, the log, *Copy diagnostics* (settings and recent log lines for a bug report, never the key or what you typed) and `config.json`.
+The selection is copied with Ctrl+C and your clipboard is put back right after (the copy may still show up in Windows clipboard history). It's off in terminals, where typing doesn't replace a selection and Ctrl+C would interrupt the shell; use Ctrl+Alt+Space there.
 
-The first start shows a short **welcome guide**: how it works, the API key (saved and tested), and the main choices.
+### Try again
+
+Not quite right? Press **Ctrl+Alt+R** straight away. The answer is swapped for a different one, and the model is told which answers you passed on.
+
+![In Notepad, "another word for happy" becomes "joyful"; Ctrl+Alt+R swaps it for "cheerful"](docs/media/retry.gif)
+
+It works until you type, click or switch windows. After that, Ctrl+Alt+R goes to the app as usual.
 
 ### Risky commands
 
-If an answer looks destructive, it isn't typed straight away. A red bar shows it and why (deletes files, drops a table, throws away git work, shuts down the PC…). Enter types it, and Esc (or any other key) puts your request back. In the benchmark, one model answered "remove all unused images" with `find … -delete`, which would have deleted every PNG; this check catches that. `Inkling.exe --risk-test` checks the rules against sample commands.
+If an answer could delete or break things (`rm -rf`, `find … -delete`, `DROP TABLE`, `DELETE` without `WHERE`, `git reset --hard`, `Remove-Item -Recurse`, `format`, shutting down…), it isn't typed straight away. A red bar shows the command and what it would do. **Enter** types it, **Esc** puts your request back.
 
-### Apps where Inkling stays off
+![Asking a terminal to "delete all .log files in here": the answer find . -name "*.log" -delete is shown in a red bar first, and only typed after Enter](docs/media/risky.gif)
 
-In apps on this list (KeePass, KeePassXC, 1Password and Bitwarden by default), Inkling's shortcuts do nothing and reach the app as usual. Add games, remote desktops or anything else in *Privacy & safety*.
+### Snippets
 
-## Tray menu
+Save phrases of your own in Settings → Snippets. Ask for one and it's typed instantly, without the model: `shrug` gives `¯\_(ツ)_/¯`, `today` gives the date. `{date}`, `{time}` and `{clipboard}` are filled in.
 
-*Settings…*, *Model* (Bolt or Laguna), *Answer length*, *Pause Inkling*, *Help* (welcome guide, request timings, log) and *Exit*.
+### Answer length
 
-## Backends
+Short (a word or a command, the default), a sentence or two, or a paragraph: in the tray menu or Settings.
 
-| Backend | How | Default model | Warm request → answer |
+## Settings
+
+Click the tray icon. Changes apply straight away.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/settings-dark.png">
+  <img src="docs/media/settings.png" width="720" alt="Inkling settings: shortcuts, answer length, appearance and start with Windows">
+</picture>
+
+- **General:** the three shortcuts (click a box and press the keys; Inkling refuses ones that Windows or every app relies on, like Ctrl+C or Win+L, and warns if another program already uses one), answer length, light or dark, start with Windows.
+- **Model:** Nemotron 3.5 Bolt (the default) or Laguna XS 2.1, and your API key.
+- **Typing:** the corner light or a bar next to the cursor, the `...` animation, typing speed, a slower speed for apps that drop fast typing (Notepad), and one-line answers.
+- **Snippets:** your instant replies.
+- **Privacy:** the risky-command check, apps where Inkling stays off (password managers by default; add games or remote desktops), and whether window titles are sent.
+- **About:** updates, the welcome guide, request timings, the log, and *Copy diagnostics* for bug reports.
+
+## Models and speed
+
+Inkling calls NVIDIA's API directly over HTTPS; nothing runs in the background between requests. The connection is opened the moment you press the shortcut, so it's ready by the time you press Enter, and Inkling stops reading as soon as the first line of the answer is complete.
+
+The two models on offer were picked by benchmarking every model the free API serves, with 42 questions across 14 areas (bash, PowerShell, git, Docker, Python, JavaScript, SQL, regex, Excel, facts, maths, units, translation, grammar), each asked as if typed in a matching app:
+
+| Model | Correct | Median time | 90% within |
 |---|---|---|---|
-| **NVIDIA NIM** (default) | HTTPS API, your NIM key | `nvidia/nemotron-3.5-bolt-e4b` | ≈ 0.4–0.7 s |
-| Claude | `claude` CLI (Claude Code) | `haiku` | ≈ 1.0 s |
-| Gemini | `agy` CLI (Antigravity) | `gemini-3.8-flash-low` | several seconds |
+| **Nemotron 3.5 Bolt** (default) | 95% | 0.39 s | 1.0 s |
+| Laguna XS 2.1 | 95% | 0.69 s | 2.4 s |
+| Claude Haiku via Claude Code, for comparison | 93% | 2.0 s | 3.8 s |
+| Step 5 Preview | 95% | 6.1 s | 26 s |
+| Nemotron 3.5 Lightning | 67% | 7.3 s | 14 s |
 
-### NVIDIA NIM (no CLI)
+Models that think before answering are accurate but far too slow to type in place. The full report is in [`bench/results`](bench/results), and the questions are in [`bench/questions.json`](bench/questions.json).
 
-Requests go straight to `https://integrate.api.nvidia.com/v1/chat/completions` (OpenAI-compatible), streamed. No process is kept running: the only thing warmed is the HTTPS connection, opened when you press the hotkey, so the TLS handshake happens while you type. With `SingleLine`, Inkling stops reading as soon as the first line is complete.
+The free key allows about 40 requests a minute. Inkling stays under that and tells you if you hit it. Settings → Model → *Use a command-line tool instead* can switch to the Claude Code or Gemini (Antigravity) CLI if you have one installed and signed in.
 
-- **Key:** *Settings → Model* (or the welcome guide) stores it in Windows Credential Manager as `Inkling:nim`. It is never put in `config.json` or the log. Without a stored key, the `NVIDIA_API_KEY` environment variable is used.
-- **Model:** *Settings → Model* or the tray offers the two models that did best in the benchmark (see below). Any other NVIDIA model id can be set in `config.json`; NVIDIA's catalog lists more models than it actually serves, and those return 404.
+## Privacy
 
-  Benchmark (42 questions in 14 domains, `bench/questions.json`, run with `--bench`):
+Each request sends your request (or selected text), the app's name, the answer length and, if that option is on, the window title, to NVIDIA's API, which answers it. Inkling has no server of its own and collects nothing.
 
-  | Model | Correct | Median | p90 |
-  |---|---|---|---|
-  | **Nemotron 3.5 Bolt** | 95% | 0.39 s | 1.0 s |
-  | Laguna XS 2.1 | 95% | 0.69 s | 2.4 s |
-  | Claude haiku (CLI, for comparison) | 93% | 2.0 s | 3.8 s |
-  | Step 5 Preview | 95% | 6.1 s | 26 s |
-  | Nemotron 3.5 Lightning | 67% | 7.3 s | 14 s |
+- Your API key is kept in Windows Credential Manager, never in a file.
+- The log (`%APPDATA%\Inkling\inkling.log`) holds only timings and errors, never what you typed or the answer.
+- Keystrokes are watched only after you press the shortcut, kept in memory, and never written anywhere.
+- The only other connection is the daily update check, to GitHub.
 
-  Reasoning models think before answering, so they're too slow to type in place. Most other models in NVIDIA's catalog returned 404.
-- **Rate limit:** the free tier allows about 40 requests a minute per key, shared with any other tool using the same key. Inkling keeps its own count (`NimRequestsPerMinute`, 38). Past it, you get "try again in N s" right away and your text is put back. Warm-ups are skipped when the connection was used in the last 90 s, so normal use is one request per Enter.
-- **Other servers:** `NimBaseUrl` can point at any OpenAI-compatible API, e.g. a local model in Ollama: `http://localhost:11434/v1`.
-- Requests go to NVIDIA's cloud, with the same context as the other backends: app name, window title (if `SendWindowTitle`) and your request or selection.
+## Known limits
 
-### Style without fine-tuning
+- Windows doesn't let a normal app read keys from, or type into, apps running **as administrator**. Run Inkling as administrator too if you need that.
+- Inkling tracks what you type from your keystrokes, so autocomplete (shell tab-completion, an IME) can make it erase the wrong amount. Tab cancels for that reason.
+- Some apps drop keys typed very fast. Notepad is on the "slower" list by default; add others in Settings → Typing.
+- Answers come from a language model and can be wrong. Read commands before you run them.
 
-NIM's hosted API can't be fine-tuned. That needs NVIDIA's NeMo Customizer on your own GPUs, which isn't worth it here. It isn't needed either: the system prompt and context are only a few hundred tokens. The API backend also sends a few **examples** (`Examples` in config: hint, request, ideal answer) as earlier chat turns. Small models copy the style of examples far more reliably than they follow rules, so edit those to change how answers look.
+## Build and run
 
-### CLI backends
-
-These use CLIs you already have and are signed in to, with no API key. The CLI is kept running in the background (`--input-format stream-json`). Each process answers one request and is replaced by a fresh one, started in the background straight away, so requests never see each other's history.
-
-For Claude, the answer is taken from the CLI's `assistant` message as soon as it arrives. The CLI then makes a second model call (a post-turn summary) before it prints its final `result`, which used to add 1.3–3 s to every request. A warm request now takes about **1 s** from Enter to answer (it was about 3.9 s), plus the typing. agy only starts up when it receives its first message, so warming it in advance doesn't help much, and each request sends it ~15k tokens of its own prompt. Expect several seconds with agy.
-
-Claude runs with no tools, no MCP servers and no user settings. CLI processes close when Inkling exits, even if it crashes.
-
-## Diagnostics
-
-Tray → *Diagnostics (timings)* shows the last 30 requests, with medians at the top:
-
-- **Before sending:** copying the selection (select to ask), reading the app context, waiting for the CLI, and a cold start (a new CLI, or a new HTTPS connection for NIM)
-- **CLI/API and model:** for CLIs, process start and age, request → first output line, request → answer and the model time the CLI reports. For NIM, request → first token and request → answer complete. Tokens used for both.
-- **Parsing:** JSON parsing of the CLI output and cleaning the answer
-- **Keystroke injection:** erasing the request for the dots, stopping the dots, erasing, and typing the answer (characters × ms per key)
-
-The window holds no prompts or answers, only lengths and times. Each request also writes a `trace` line to the log. `Inkling.exe --ask nim|claude|agy "…"` prints the same breakdown for three requests.
-
-Measured on one PC, warm: Enter → request sent < 1 ms, request → answer ≈ 0.4–0.7 s with NIM (Nemotron 3.5 Bolt) or ≈ 1.0 s with Claude haiku, parse < 1 ms, typing ≈ 0.5 s for 15 characters in Notepad (30 ms/key) or ≈ 0.1 s elsewhere (5 ms/key).
-
-## Config
-
-`%APPDATA%\Inkling\config.json`. Most of it is in Settings; the rest (prompt, examples, per-app hints, paths) is edited by hand (*Settings → About → Open config.json*) and picked up the next time Settings opens. Saves are atomic, and an unreadable file is kept aside as `config.invalid-<time>.json` instead of being overwritten.
-
-| Key | Default | |
-|---|---|---|
-| `Hotkey` | `Ctrl+Alt+Space` | Must include Ctrl, Alt or Win |
-| `RetryHotkey` | `Ctrl+Alt+R` | Ask again right after an answer. Empty = off |
-| `SelectionHotkey` | `Ctrl+Alt+Enter` | Select to ask. Empty = off |
-| `MaxSelectionChars` / `SelectionSkipApps` | `4000` / terminals | Longest selection sent; apps where select-to-ask is refused |
-| `Theme` | `system` | `system`, `light` or `dark` for Inkling's windows |
-| `RiskGuard` | `true` | Confirm destructive-looking answers before typing them |
-| `DisabledApps` | password managers | Process names where Inkling's shortcuts do nothing |
-| `FirstRunDone` | `false` | Set once the welcome guide has been closed |
-| `AnswerLength` | `short` | `short`, `sentence` or `paragraph` |
-| `Backend` | `nim` | `nim`, `claude` or `agy` |
-| `NimModel` / `NimBaseUrl` | `nvidia/nemotron-3.5-bolt-e4b` / NVIDIA's API | Model (Settings offers Bolt and Laguna; any id works here) and OpenAI-compatible endpoint |
-| `NimRequestsPerMinute` | `38` | Inkling's own cap, under the key's ~40/min |
-| `Examples` | 5 pairs | Few-shot examples (hint, request, answer) for the API backend |
-| `ClaudeModel` / `AgyModel` | `haiku` / `gemini-3.8-flash-low` | `agy models` lists the Gemini options |
-| `ClaudePath` / `AgyPath` | empty | Empty = find on PATH |
-| `Indicator` | `icon` | `icon` (corner light) or `bar` |
-| `ThinkingDots` | `true` | Animate `...` in the text field while waiting |
-| `SendWindowTitle` | `true` | Include the window title in the context |
-| `SingleLine` | `true` | Keep only the first line. A newline would run a command in a terminal |
-| `TypingDelayMs` | `5` | Pause between typed keys |
-| `SlowApps` / `SlowAppDelayMs` | `["Notepad"]` / `30` | Apps that drop fast typing get a slower pace |
-| `RequestsPerProcess` | `1` | Raise to reuse one CLI process for several requests (they then share history) |
-| `TimeoutSeconds` | `45` | |
-| `SystemPrompt`, `DefaultHint`, `Contexts` | | Prompting and per-app answer hints |
-
-Log (timings and errors only, never what you typed): `%APPDATA%\Inkling\inkling.log`.
-
-## Build
-
-Requires the .NET 10 SDK, plus Inno Setup 6 for the installer (`winget install JRSoftware.InnoSetup`).
+Needs the .NET 10 SDK, and Inno Setup 6 for the installer (`winget install JRSoftware.InnoSetup`).
 
 ```bash
-dotnet build Inkling -c Debug
+dotnet run --project Inkling
 ```
 
-Installer: publishes a self-contained single-file `Inkling.exe` and writes `dist\Inkling-Setup-<version>.exe`:
+Only one copy runs at a time, so quit the installed Inkling first.
+
+Build the installer (a self-contained single-file `Inkling.exe`, and `dist\Inkling-Setup-<version>.exe`):
 
 ```bash
 pwsh -File build-installer.ps1
 ```
 
-Check a backend without the hotkey (asks three times, to show cold and warm timing, with the full breakdown):
+Developer options of `Inkling.exe`:
 
-```bash
-Inkling.exe --ask nim "find files over 100mb in home" "a single bash command for Ubuntu running in WSL2"
-```
+| Option | What it does |
+|---|---|
+| `--ask nim\|claude\|agy "request" ["hint"]` | Asks three times and prints the timing of every step |
+| `--bench model1 [model2 …]` | Runs the benchmark and writes a report to `bench/results` |
+| `--risk-test` | Checks the risky-command rules against sample commands |
+| `--check-update` | Asks GitHub for the latest release |
+| `--render-ui <folder> [light\|dark]` | Saves pictures of the Settings tabs and the welcome window |
+| `--render-media <folder>` | Renders the README GIFs (mock scenes drawn frame by frame, encoded with FFmpeg) |
 
-Benchmark models for accuracy and speed. This runs the 42 questions in `bench/questions.json` (14 domains, each asked as if typed in a matching app) through the real request path and writes a Markdown report to `bench/results/`. Model names are NIM model ids, or `claude` / `agy`. NIM requests are paced to stay under the key's rate limit.
+## How it's put together
 
-```bash
-Inkling.exe --bench nvidia/nemotron-3.5-bolt-e4b poolside/laguna-xs-2.1 claude
-```
+- `CaptureController.cs`: the shortcut → type → Enter → answer state machine, on low-level keyboard and mouse hooks (`Input/`).
+- `Input/InputSender.cs`: types the answer with `SendInput`, key by key, using real keys of your keyboard layout where it can.
+- `Ai/ChatApiBackend.cs`: the NVIDIA API (any OpenAI-compatible endpoint), streamed. `Ai/StreamCliBackend.cs`: the optional CLI backends.
+- `ForegroundContext.cs` and `Ai/Prompt.cs`: what the model is told about where you're typing.
+- `RiskGuard.cs`, `Snippets.cs`, `Updates.cs`, `Secrets.cs` (Credential Manager), `Diagnostics.cs` (timings).
+- `Ui/Wpf/`: Settings, welcome and update windows (WPF with the Windows 11 look). `Ui/StatusOverlay.cs`: the corner light and the bar.
+- `installer/Inkling.iss`: the per-user Inno Setup installer.
 
-## Limits
+## Publishing a release
 
-- Windows doesn't let a normal app read keys from, or type into, apps running **as Administrator**. Run Inkling as admin if you need that.
-- Text is tracked from your keystrokes, so app autocomplete (e.g. shell tab-completion, IME) can make it erase the wrong amount. Tab cancels capture for that reason.
-- Keystrokes are held in memory only while capture is active, and are never written to disk.
+1. Set `<Version>` in `Inkling/Inkling.csproj` to `x.y.z`.
+2. Write the release notes in `docs/releases/x.y.z.md`.
+3. Commit and push, then build the installer with `build-installer.ps1`.
+4. Publish it, tagged `vx.y.z`:
+   `gh release create vx.y.z dist\Inkling-Setup-x.y.z.exe --title "Inkling x.y.z" --notes-file docs/releases/x.y.z.md`
+
+The update window shows the release's description as "what's new". Drafts and pre-releases are never offered as updates.
+
+## Feedback
+
+If something doesn't work, or you'd like it to do something it doesn't, [open an issue](https://github.com/AtharvGogia/Inkling/issues). Settings → About → *Copy diagnostics* puts the useful details on the clipboard (never your key or what you typed). Ideas are just as welcome as bugs.
+
+## Licence
+
+Inkling is open source under the [MIT licence](LICENSE): © 2026 Atharv Gogia.
+
+Thanks for reading, and for trying Inkling. — Atharv

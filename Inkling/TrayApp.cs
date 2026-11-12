@@ -26,6 +26,10 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     private DiagnosticsForm? _diagnostics;
     private SettingsWindow? _settings;
     private WelcomeWindow? _welcome;
+    private UpdateWindow? _updateWindow;
+    private Release? _available;
+    private readonly ToolStripMenuItem _updateItem;
+    private readonly System.Windows.Forms.Timer _updateTimer = new() { Interval = 60_000 };
 
     public TrayApp()
     {
@@ -50,7 +54,9 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         foreach (var length in Prompt.Lengths)
             _lengthItems.Add((length, new ToolStripMenuItem(Prompt.LengthLabel(length), null, (_, _) => SetLength(length))));
 
+        _updateItem = new ToolStripMenuItem("", null, (_, _) => ShowUpdate()) { Visible = false };
         var menu = new ContextMenuStrip();
+        menu.Items.Add(_updateItem);
         var settingsItem = new ToolStripMenuItem("Settings…", null, (_, _) => ShowSettings());
         settingsItem.Font = new Font(settingsItem.Font, FontStyle.Bold);
         menu.Items.Add(settingsItem);
@@ -61,6 +67,11 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Help", null,
             new ToolStripMenuItem("Welcome guide", null, (_, _) => ShowWelcome()),
+            new ToolStripMenuItem("Check for updates…", null, async (_, _) =>
+            {
+                var status = await CheckForUpdatesNowAsync();
+                if (_available == null) _tray!.ShowBalloonTip(2000, "Inkling", status, ToolTipIcon.Info);
+            }),
             new ToolStripMenuItem("Request timings", null, (_, _) => ShowTimings()),
             new ToolStripMenuItem("Open log", null, (_, _) => OpenPath(Log.FilePath))));
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
@@ -68,6 +79,10 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
 
         _tray = new NotifyIcon { Icon = LoadIcon(), ContextMenuStrip = menu, Visible = true };
         _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowSettings(); };
+        _tray.BalloonTipClicked += (_, _) => { if (_available != null) ShowUpdate(); };
+        // First automatic check a minute after start, then hourly ticks that check at most once a day.
+        _updateTimer.Tick += async (_, _) => { _updateTimer.Interval = 3_600_000; await AutoCheckAsync(); };
+        _updateTimer.Start();
         _overlay.Message += (text, isError) =>
             _tray.ShowBalloonTip(isError ? 4000 : 2000, "Inkling", text, isError ? ToolTipIcon.Warning : ToolTipIcon.Info);
         RefreshMenu();
@@ -191,6 +206,67 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         return sb.ToString();
     }
 
+    // ---- Updates -------------------------------------------------------------------------------
+
+    private async Task AutoCheckAsync()
+    {
+        if (!_config.CheckForUpdates || DateTime.UtcNow - _config.LastUpdateCheck < TimeSpan.FromHours(23)) return;
+        try
+        {
+            var release = await Updates.CheckAsync();
+            var cfg = _config.Clone();
+            cfg.LastUpdateCheck = DateTime.UtcNow;
+            Apply(cfg);
+            if (release == null || release.Version.ToString(3) == _config.SkippedVersion) return;
+            Offer(release);
+            _tray.ShowBalloonTip(5000, $"Inkling {release.Version.ToString(3)} is available", "Click to see what's new and update.", ToolTipIcon.Info);
+        }
+        catch (Exception ex) { Log.Write("Update check failed: " + ex.Message); }
+    }
+
+    public async Task<string> CheckForUpdatesNowAsync()
+    {
+        try
+        {
+            var release = await Updates.CheckAsync();
+            var cfg = _config.Clone();
+            cfg.LastUpdateCheck = DateTime.UtcNow;
+            Apply(cfg);
+            if (release == null) return $"You're up to date ({AppInfo.Version}).";
+            Offer(release);
+            ShowUpdate();
+            return $"Inkling {release.Version.ToString(3)} is available.";
+        }
+        catch (Exception ex)
+        {
+            Log.Write("Update check failed: " + ex.Message);
+            return "Couldn't reach GitHub. Try again later.";
+        }
+    }
+
+    private void Offer(Release release)
+    {
+        _available = release;
+        _updateItem.Text = $"Update to {release.Version.ToString(3)}…";
+        _updateItem.Font = new Font(_updateItem.Font, FontStyle.Bold);
+        _updateItem.Visible = true;
+    }
+
+    private void ShowUpdate()
+    {
+        if (_available == null) return;
+        if (_updateWindow != null) { _updateWindow.Activate(); return; }
+        _updateWindow = new UpdateWindow(_available, _config.Theme, version =>
+        {
+            var cfg = _config.Clone();
+            cfg.SkippedVersion = version;
+            Apply(cfg);
+            _updateItem.Visible = false;
+        });
+        _updateWindow.Closed += (_, _) => _updateWindow = null;
+        ShowWpf(_updateWindow);
+    }
+
     // ---- Tray menu -----------------------------------------------------------------------------
 
     private void ReplaceBackend()
@@ -281,6 +357,8 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
 
     protected override void ExitThreadCore()
     {
+        _updateTimer.Dispose();
+        _updateWindow?.Close();
         _settings?.Close();
         _welcome?.Close();
         _tray.Visible = false;

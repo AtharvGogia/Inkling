@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160" role="img" aria-label="Inkling">
+<defs><linearGradient id="disc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8E72FF"/><stop offset="1" stop-color="#6A48F0"/></linearGradient></defs>
+<g transform="translate(0,0) scale(0.3125)">
+  <circle cx="256" cy="256" r="236" fill="url(#disc)"/>
+  <path d="M328.31,235.44 A94.40,94.40 0 1 1 183.69,235.44 L256.00,149.23 Z" fill="#FFFFFF"/>
+</g>
+<text x="184" y="108" font-family="Segoe UI Variable Display, Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="92" font-weight="600" fill="#F2F2F2">Inkling</text>
+</svg>

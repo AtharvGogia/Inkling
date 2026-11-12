@@ -15,6 +15,18 @@ internal static class Program
         if (args.Length >= 3 && args[0] == "--ask") return AskFromCommandLine(args);
         // Benchmark:  Inkling.exe --bench model1 [model2 ...]   (see Bench.cs)
         if (args.Length >= 2 && args[0] == "--render-ui") { AttachConsole(-1); return Ui.Wpf.UiSnapshots.Run(args[1], args.Length > 2 ? args[2] : null); }
+        if (args.Length >= 2 && args[0] == "--render-media") { AttachConsole(-1); return Ui.Wpf.ReadmeMedia.Render(args[1]); }
+        if (args.Length >= 1 && args[0] == "--check-update")
+        {
+            AttachConsole(-1);
+            try
+            {
+                var r = Updates.CheckAsync().GetAwaiter().GetResult();
+                Console.WriteLine(r == null ? $"Up to date ({AppInfo.Version}), or no published release yet." : $"Newer: {r.Tag}, installer {r.InstallerName ?? "none"}");
+                return 0;
+            }
+            catch (Exception ex) { Console.WriteLine("Check failed: " + ex.Message); return 1; }
+        }
         if (args.Length >= 1 && args[0] == "--risk-test") { AttachConsole(-1); return RiskSelfTest(); }
         if (args.Length >= 1 && args[0] == "--bench") { AttachConsole(-1); return Bench.Run(args); }
         // Build helper: regenerate Assets\inkling.ico from the drawing code.

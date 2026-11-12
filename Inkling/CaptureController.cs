@@ -352,13 +352,15 @@ internal sealed class CaptureController : IDisposable
             rejected = [];
         }
 
-        // Start the request first, then swap our text for the animated dots while it runs.
+        // A snippet answers instantly; otherwise start the request, then swap our text for the dots while it runs.
+        var snippet = job.RetryOf == null ? Snippets.Expand(cfg, job.Request) : null;
+        if (snippet != null) trace.Backend = "snippet";
         var message = Prompt.Build(cfg, context, job.Request, rejected);
-        var ask = backend.AskAsync(message, trace, cts.Token);
+        var ask = snippet != null ? Task.FromResult(snippet) : backend.AskAsync(message, trace, cts.Token);
         bool erased = false;
         using var animCts = new CancellationTokenSource();
         var animation = Task.CompletedTask;
-        if (cfg.ThinkingDots)
+        if (cfg.ThinkingDots && snippet == null)
         {
             await InputSender.WaitForModifiersReleasedAsync();
             if (CanEditTarget && !cts.IsCancellationRequested)
@@ -379,7 +381,7 @@ internal sealed class CaptureController : IDisposable
             var raw = await ask;
             trace.AnswerAtMs = trace.Now;
             var t = trace.Now;
-            answer = OutputCleaner.Clean(raw, cfg.SingleLine);
+            answer = snippet ?? OutputCleaner.Clean(raw, cfg.SingleLine);
             trace.ParseMs += trace.Now - t;
             if (answer.Length == 0) failure = "Empty answer";
         }
@@ -432,7 +434,7 @@ internal sealed class CaptureController : IDisposable
             }
 
             // Destructive-looking commands are shown first and only typed after Enter.
-            if (cfg.RiskGuard && RiskGuard.Check(answer!) is { } why)
+            if (cfg.RiskGuard && snippet == null && RiskGuard.Check(answer!) is { } why)
             {
                 _confirm = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 _state = State.Confirming;
@@ -468,7 +470,7 @@ internal sealed class CaptureController : IDisposable
             trace.Outcome = "ok";
 
             // Retrying would backspace over the answer; a multi-line one may have run things (Enter), so not those.
-            if (!typed.Contains('\n') && CanEditTarget)
+            if (snippet == null && !typed.Contains('\n') && CanEditTarget)
                 _last = new LastAnswer(_targetHwnd, job.Request, context, typed, rejected);
         }
         finally

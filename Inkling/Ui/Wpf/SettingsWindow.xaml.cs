@@ -25,6 +25,8 @@ internal interface ISettingsHost
     void ShowWelcome();
     void ClearCliContext();
     string DiagnosticsText();
+    /// <summary>Checks GitHub now (opening the update window if there's one) and returns a short status line.</summary>
+    Task<string> CheckForUpdatesNowAsync();
 }
 
 internal sealed partial class SettingsWindow : Window
@@ -71,6 +73,8 @@ internal sealed partial class SettingsWindow : Window
         RiskCheck.Click += (_, _) => Set(c => c.RiskGuard = RiskCheck.IsChecked == true);
         DisabledApps.Changed += list => Set(c => c.DisabledApps = list);
         TitleCheck.Click += (_, _) => Set(c => c.SendWindowTitle = TitleCheck.IsChecked == true);
+        SnippetList.Changed += list => Set(c => c.Snippets = list);
+        UpdatesCheck.Click += (_, _) => Set(c => c.CheckForUpdates = UpdatesCheck.IsChecked == true);
 
         LoadFromConfig();
     }
@@ -109,6 +113,9 @@ internal sealed partial class SettingsWindow : Window
             RiskCheck.IsChecked = _cfg.RiskGuard;
             DisabledApps.Items = _cfg.DisabledApps;
             TitleCheck.IsChecked = _cfg.SendWindowTitle;
+            SnippetList.Items = _cfg.Snippets;
+            UpdatesCheck.IsChecked = _cfg.CheckForUpdates;
+            UpdateStatus.Text = $"You have {AppInfo.Version}.";
         }
         finally { _loading = false; }
         RefreshStatus();
@@ -129,21 +136,15 @@ internal sealed partial class SettingsWindow : Window
 
     private void RefreshStatus()
     {
+        bool api = _cfg.Backend.ToLowerInvariant() is not ("claude" or "agy" or "gemini");
         StatusModel.Text = _cfg.Backend.ToLowerInvariant() switch
         {
-            "claude" => $"Claude Code CLI ({_cfg.ClaudeModel})",
-            "agy" or "gemini" => $"Gemini via agy ({_cfg.AgyModel})",
-            _ => $"{AppConfig.ModelName(_cfg.NimModel)} on NVIDIA's API",
+            "claude" => $"Claude Code CLI",
+            "agy" or "gemini" => $"Gemini CLI",
+            _ => AppConfig.ModelName(_cfg.NimModel),
         };
-        StatusKey.Text = Secrets.NimKeySource() switch
-        {
-            "stored" => "API key: saved",
-            "environment" => "API key: from NVIDIA_API_KEY",
-            _ => "API key: not set",
-        };
-        StatusHotkeys.Text = $"Ask: {HotkeyBox.Pretty(_cfg.Hotkey)}" +
-                             (_cfg.SelectionHotkey.Length > 0 ? $"\nSelected text: {HotkeyBox.Pretty(_cfg.SelectionHotkey)}" : "") +
-                             (_cfg.RetryHotkey.Length > 0 ? $"\nTry again: {HotkeyBox.Pretty(_cfg.RetryHotkey)}" : "");
+        StatusKey.Text = !api ? "Command-line tool" : Secrets.NimKeySource() == null ? "No API key yet" : "Ready";
+        StatusHotkeys.Text = HotkeyBox.Pretty(_cfg.Hotkey) + " to ask";
     }
 
     // ---- Shortcuts -----------------------------------------------------------------------------
@@ -191,7 +192,7 @@ internal sealed partial class SettingsWindow : Window
         {
             var rb = new WpfRadioButton { GroupName = "Model", Margin = new Thickness(0, 0, 0, 8), IsChecked = m.Id == _cfg.NimModel };
             var label = new StackPanel();
-            label.Children.Add(new WpfTextBlock { Text = m.Name + (m.Id == AppConfig.Models[0].Id ? "  (recommended)" : ""), FontWeight = FontWeights.SemiBold });
+            label.Children.Add(new WpfTextBlock { Text = m.Name });
             label.Children.Add(new WpfTextBlock { Text = m.Description, Opacity = 0.7, TextWrapping = TextWrapping.Wrap });
             rb.Content = label;
             var id = m.Id;
@@ -204,9 +205,9 @@ internal sealed partial class SettingsWindow : Window
     {
         KeyStatus.Text = Secrets.NimKeySource() switch
         {
-            "stored" => "A key is saved in Windows Credential Manager.",
-            "environment" => "Using the key in the NVIDIA_API_KEY environment variable. Save one here to use it instead.",
-            _ => "No key yet. Inkling can't answer without one.",
+            "stored" => "Saved.",
+            "environment" => "Using NVIDIA_API_KEY from your environment.",
+            _ => "Not set.",
         };
         RemoveKeyButton.IsEnabled = Secrets.NimKeySource() == "stored";
     }
@@ -250,6 +251,15 @@ internal sealed partial class SettingsWindow : Window
     private void OpenFolder_Click(object sender, RoutedEventArgs e) => Open(AppConfig.Dir);
     private void Source_Click(object sender, RoutedEventArgs e) => Open(AppInfo.SourceUrl);
     private void NvidiaKey_Click(object sender, RoutedEventArgs e) => Open("https://build.nvidia.com/");
+    private void Issues_Click(object sender, RoutedEventArgs e) => Open(AppInfo.SourceUrl + "/issues");
+
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        CheckNowButton.IsEnabled = false;
+        UpdateStatus.Text = "Checking…";
+        UpdateStatus.Text = await _host.CheckForUpdatesNowAsync();
+        CheckNowButton.IsEnabled = true;
+    }
 
     private void CopyDiagnostics_Click(object sender, RoutedEventArgs e)
     {
@@ -278,7 +288,7 @@ internal sealed partial class SettingsWindow : Window
         _cfg.Backend = d.Backend; _cfg.NimModel = d.NimModel;
         _cfg.Indicator = d.Indicator; _cfg.ThinkingDots = d.ThinkingDots;
         _cfg.TypingDelayMs = d.TypingDelayMs; _cfg.SlowAppDelayMs = d.SlowAppDelayMs; _cfg.SingleLine = d.SingleLine;
-        _cfg.RiskGuard = d.RiskGuard; _cfg.SendWindowTitle = d.SendWindowTitle;
+        _cfg.RiskGuard = d.RiskGuard; _cfg.SendWindowTitle = d.SendWindowTitle; _cfg.CheckForUpdates = d.CheckForUpdates;
         Commit();
         LoadFromConfig();
         Theme.ApplyTo(this, _cfg.Theme);

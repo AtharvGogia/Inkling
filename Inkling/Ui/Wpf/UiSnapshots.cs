@@ -21,6 +21,7 @@ internal static class UiSnapshots
         public void ShowWelcome() { }
         public void ClearCliContext() { }
         public string DiagnosticsText() => "";
+        public Task<string> CheckForUpdatesNowAsync() => Task.FromResult("You're up to date.");
     }
 
     public static int Run(string folder, string? theme)

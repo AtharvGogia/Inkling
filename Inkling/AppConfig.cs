@@ -29,8 +29,8 @@ public sealed class AppConfig
     /// <summary>The models offered in Settings and the tray. See bench/results for how they were chosen.</summary>
     public static readonly ModelChoice[] Models =
     [
-        new("nvidia/nemotron-3.5-bolt-e4b", "Nemotron 3.5 Bolt", "Fastest. About 0.4 s per answer, 95% correct in the benchmark."),
-        new("poolside/laguna-xs-2.1", "Laguna XS 2.1", "Just as accurate, about twice as slow (0.7 s), occasional slow answers."),
+        new("nvidia/nemotron-3.5-bolt-e4b", "Nemotron 3.5 Bolt", "Fastest"),
+        new("poolside/laguna-xs-2.1", "Laguna XS 2.1", "A little slower"),
     ];
 
     /// <summary>"system", "light" or "dark" for Inkling's windows.</summary>
@@ -39,6 +39,17 @@ public sealed class AppConfig
     public bool FirstRunDone { get; set; }
     /// <summary>Show answers that look destructive (rm -rf, DROP TABLE, ...) first and wait for Enter before typing them.</summary>
     public bool RiskGuard { get; set; } = true;
+    /// <summary>Requests typed exactly like a trigger get the saved text back instantly, without asking the model.</summary>
+    public List<Snippet> Snippets { get; set; } =
+    [
+        new() { Trigger = "shrug", Text = @"¯\_(ツ)_/¯" },
+        new() { Trigger = "today", Text = "{date}" },
+    ];
+    /// <summary>Look for a newer release on GitHub once a day.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+    public DateTime LastUpdateCheck { get; set; }
+    /// <summary>A release the user chose to skip: not offered again.</summary>
+    public string SkippedVersion { get; set; } = "";
     /// <summary>Apps (process names) where Inkling's hotkeys do nothing and pass through: password managers, games, remote desktop...</summary>
     public List<string> DisabledApps { get; set; } = ["KeePass", "KeePassXC", "1Password", "Bitwarden"];
 

@@ -19,13 +19,13 @@ internal sealed partial class WelcomeWindow : Window
         Theme.ApplyTo(this, cfg.Theme);
         Logo.Source = SettingsWindow.AppIcon();
 
-        Step1.Text = $"1.  Press {HotkeyBox.Pretty(cfg.Hotkey)} anywhere you can type, write your request, press Enter:";
+        Step1.Text = $"Press {HotkeyBox.Pretty(cfg.Hotkey)}, type what you want, press Enter.";
         Step2.Text = cfg.SelectionHotkey.Length > 0
-            ? $"2.  Or select some text and press {HotkeyBox.Pretty(cfg.SelectionHotkey)}: the selection is the request, and the answer replaces it."
-            : "2.  Select-to-ask is off (turn it on in Settings).";
+            ? $"Or select text and press {HotkeyBox.Pretty(cfg.SelectionHotkey)}."
+            : "";
         Step3.Text = cfg.RetryHotkey.Length > 0
-            ? $"3.  Not what you wanted? Press {HotkeyBox.Pretty(cfg.RetryHotkey)} right away for a different answer."
-            : "3.  Try-again is off (turn it on in Settings).";
+            ? $"Not quite right? {HotkeyBox.Pretty(cfg.RetryHotkey)} tries again."
+            : "";
 
         StartupCheck.IsChecked = host.StartupEnabled;
         RiskCheck.IsChecked = cfg.RiskGuard;
@@ -35,9 +35,9 @@ internal sealed partial class WelcomeWindow : Window
     private void RefreshKeyStatus() =>
         KeyStatus.Text = Secrets.NimKeySource() switch
         {
-            "stored" => "A key is already saved. You're ready to go; test it below if you like.",
-            "environment" => "Found a key in the NVIDIA_API_KEY environment variable, so you're ready to go. You can also save one here.",
-            _ => "Inkling uses NVIDIA's API to answer. Paste your API key:",
+            "stored" => "Saved. You're ready.",
+            "environment" => "Found NVIDIA_API_KEY in your environment. You're ready.",
+            _ => "Paste your key:",
         };
 
     private void SaveKey_Click(object sender, RoutedEventArgs e)
