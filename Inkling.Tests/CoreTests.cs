@@ -167,11 +167,17 @@ public class BadgeTests
     }
 
     [Fact]
-    public void Thinking_cycles_dots_at_a_fixed_width()
+    public void Thinking_says_thnk_with_a_faster_cursor()
     {
-        var frames = new[] { 0.0, 0.35, 0.65 }.Select(t => BadgeIndicator.TextAt(BadgeIndicator.Mode.Thinking, t)).ToList();
-        Assert.Equal(["i_.  ", "i_.. ", "i_..."], frames);
-        Assert.All(frames, f => Assert.Equal(5, f!.Length));
+        Assert.Equal("i_thnk", BadgeIndicator.TextAt(BadgeIndicator.Mode.Thinking, 0.1));
+        Assert.Equal("i thnk", BadgeIndicator.TextAt(BadgeIndicator.Mode.Thinking, 0.3));
+    }
+
+    [Fact]
+    public void Done_shows_fin_then_hides()
+    {
+        Assert.Equal("i_fin", BadgeIndicator.TextAt(BadgeIndicator.Mode.Done, 0.5));
+        Assert.Null(BadgeIndicator.TextAt(BadgeIndicator.Mode.Done, 1.5));
     }
 
     [Fact]
@@ -179,6 +185,20 @@ public class BadgeTests
     {
         Assert.Equal("i_err", BadgeIndicator.TextAt(BadgeIndicator.Mode.Error, 1.0));
         Assert.Null(BadgeIndicator.TextAt(BadgeIndicator.Mode.Error, 2.5));
+    }
+
+    [Fact]
+    public void No_state_is_wider_than_the_badge()
+    {
+        foreach (var mode in Enum.GetValues<BadgeIndicator.Mode>())
+            Assert.True((BadgeIndicator.TextAt(mode, 0) ?? "").Length <= BadgeIndicator.Widest.Length);
+    }
+
+    [Fact]
+    public void Each_state_has_its_own_colour()
+    {
+        var colours = Enum.GetValues<BadgeIndicator.Mode>().Select(m => BadgeIndicator.ColorFor(m).ToArgb()).ToList();
+        Assert.Equal(colours.Count, colours.Distinct().Count());
     }
 }
 

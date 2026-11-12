@@ -37,7 +37,7 @@ internal sealed partial class WelcomeWindow : Window
         {
             "stored" => "Saved. You're ready.",
             "environment" => "Found NVIDIA_API_KEY in your environment. You're ready.",
-            _ => "Paste your key:",
+            _ => "Inkling answers with NVIDIA's free API, so it needs a key. It takes a minute:",
         };
 
     private void SaveKey_Click(object sender, RoutedEventArgs e)
@@ -61,8 +61,10 @@ internal sealed partial class WelcomeWindow : Window
 
     private void Nvidia_Click(object sender, RoutedEventArgs e)
     {
-        try { Process.Start(new ProcessStartInfo("https://build.nvidia.com/") { UseShellExecute = true }); } catch { }
+        try { Process.Start(new ProcessStartInfo(AppInfo.NvidiaKeysUrl) { UseShellExecute = true }); } catch { }
     }
+
+    private void Tutorial_Click(object sender, RoutedEventArgs e) => _host.ShowTutorial();
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {

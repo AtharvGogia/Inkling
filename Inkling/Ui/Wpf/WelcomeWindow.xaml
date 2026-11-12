@@ -27,8 +27,15 @@
             </StackPanel>
         </Border>
 
-        <TextBlock Text="NVIDIA API key" FontSize="16" FontWeight="SemiBold" Margin="0,22,0,4" />
+        <TextBlock Text="Get a free NVIDIA API key" FontSize="16" FontWeight="SemiBold" Margin="0,22,0,4" />
         <TextBlock x:Name="KeyStatus" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,8" />
+        <StackPanel x:Name="KeySteps" Margin="0,0,0,10">
+            <TextBlock TextWrapping="Wrap">
+                <Run Text="1.  Open " /><Hyperlink Click="Nvidia_Click">build.nvidia.com/settings/api-keys</Hyperlink><Run Text=" and sign in (a free NVIDIA account)." />
+            </TextBlock>
+            <TextBlock Text="2.  Click Generate API Key and copy the key. It starts with nvapi-." TextWrapping="Wrap" Margin="0,4,0,0" />
+            <TextBlock Text="3.  Paste it here and click Save and test." TextWrapping="Wrap" Margin="0,4,0,0" />
+        </StackPanel>
         <DockPanel>
             <Button DockPanel.Dock="Right" Content="Save and test" Click="SaveKey_Click" Margin="8,0,0,0" />
             <PasswordBox x:Name="KeyBox" ToolTip="Paste your key (starts with nvapi-)" />
@@ -37,13 +44,13 @@
             <Button Content="Test the current key" Click="Test_Click" Margin="0,0,10,0" />
             <TextBlock x:Name="TestResult" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
         </WrapPanel>
-        <TextBlock TextWrapping="Wrap" Opacity="0.7" Margin="0,8,0,0">
-            <Hyperlink Click="Nvidia_Click">Get a free key</Hyperlink><Run Text=" · stored in Windows Credential Manager" />
-        </TextBlock>
+        <TextBlock Text="The key is kept in Windows Credential Manager, never in a file." TextWrapping="Wrap" Opacity="0.7" Margin="0,8,0,0" />
 
         <CheckBox x:Name="StartupCheck" Content="Start when I sign in to Windows" Margin="0,22,0,0" />
         <CheckBox x:Name="RiskCheck" Content="Ask before typing risky commands" Margin="0,4,0,0" />
-        <TextBlock Text="Everything else is in Settings: click the tray icon." Opacity="0.7" TextWrapping="Wrap" Margin="0,10,0,0" />
+        <TextBlock Opacity="0.7" TextWrapping="Wrap" Margin="0,10,0,0">
+            <Run Text="Everything else is in Settings: click the tray icon. New here? " /><Hyperlink Click="Tutorial_Click">Open the tutorial</Hyperlink>
+        </TextBlock>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
             <Button Content="Open Settings" Click="Settings_Click" Margin="0,0,8,0" />

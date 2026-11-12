@@ -19,6 +19,7 @@ internal static class UiSnapshots
         public bool StartupEnabled { get; set; } = true;
         public void ShowTimings() { }
         public void ShowWelcome() { }
+        public void ShowTutorial() { }
         public void ClearCliContext() { }
         public string DiagnosticsText() => "";
         public Task<string> CheckForUpdatesNowAsync() => Task.FromResult("You're up to date.");
@@ -42,6 +43,15 @@ internal static class UiSnapshots
             Save(settings, Path.Combine(folder, $"settings-{i + 1}-{Header(settings, i)}.png"));
         }
         settings.Close();
+
+        var tutorial = new TutorialWindow(cfg) { Left = -20000, Top = 0, ShowActivated = false, ShowInTaskbar = false };
+        tutorial.Show();
+        foreach (var (chapter, name) in new[] { (1, "tutorial-key"), (9, "tutorial-cli") })
+        {
+            tutorial.Open(chapter);
+            Save(tutorial, Path.Combine(folder, name + ".png"));
+        }
+        tutorial.Close();
 
         var welcome = new WelcomeWindow(host, () => { }) { Left = -20000, Top = 0, ShowActivated = false, ShowInTaskbar = false };
         welcome.Show();
@@ -70,16 +80,49 @@ internal static class UiSnapshots
         w.UpdateLayout();
         w.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         var root = (FrameworkElement)w.Content;
-        int width = (int)Math.Ceiling(root.ActualWidth), height = (int)Math.Ceiling(root.ActualHeight);
+        var m = root.Margin;
+        // The window's client area: the content plus its margin, at exact size (no stretching to the drawn bounds).
+        double cw = Math.Ceiling(root.ActualWidth + m.Left + m.Right), ch = Math.Ceiling(root.ActualHeight + m.Top + m.Bottom);
+        const double titleH = 32, pad = 12, radius = 8;
+        double width = cw + 2 * pad, height = ch + titleH + 2 * pad;
+
+        var dark = w.ThemeMode == ThemeMode.Dark || (w.ThemeMode == ThemeMode.System && Theme.SystemUsesDark());
+        System.Windows.Media.Color C(uint rgb) => System.Windows.Media.Color.FromRgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
+        var backdrop = new SolidColorBrush(dark ? C(0x202020) : C(0xF3F3F3));
+        var titleBar = new SolidColorBrush(dark ? C(0x2B2B2B) : C(0xEBEBEB));
+        var border = new System.Windows.Media.Pen(new SolidColorBrush(dark ? C(0x3C3C3C) : C(0xCFCFCF)), 1);
+        var text = new SolidColorBrush(dark ? C(0xE6E6E6) : C(0x1F1F1F));
+
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            // Fluent paints the window backdrop outside the visual tree, so draw its plain colour here.
-            var dark = w.ThemeMode == ThemeMode.Dark || (w.ThemeMode == ThemeMode.System && Theme.SystemUsesDark());
-            dc.DrawRectangle(new SolidColorBrush(dark ? System.Windows.Media.Color.FromRgb(0x20, 0x20, 0x20) : System.Windows.Media.Color.FromRgb(0xF3, 0xF3, 0xF3)), null, new Rect(0, 0, width, height));
-            dc.DrawRectangle(new VisualBrush(root), null, new Rect(0, 0, width, height));
+            // A window frame around the client area, so the picture reads as a window in the README.
+            var frame = new Rect(pad + 0.5, pad + 0.5, cw - 1, ch + titleH - 1);
+            dc.DrawRoundedRectangle(backdrop, border, frame, radius, radius);
+            dc.PushClip(new RectangleGeometry(frame, radius, radius));
+            dc.DrawRectangle(titleBar, null, new Rect(pad, pad, cw, titleH));
+            var dpi = VisualTreeHelper.GetDpi(visual).PixelsPerDip;
+            var title = new FormattedText(w.Title, System.Globalization.CultureInfo.CurrentUICulture, System.Windows.FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), 12, text, dpi);
+            dc.DrawText(title, new System.Windows.Point(pad + 14, pad + (titleH - title.Height) / 2));
+            var icons = new Typeface("Segoe Fluent Icons");
+            string[] glyphs = ["\uE921", "\uE922", "\uE8BB"];
+            for (int i = 0; i < 3; i++)
+            {
+                var g = new FormattedText(glyphs[i], System.Globalization.CultureInfo.CurrentUICulture, System.Windows.FlowDirection.LeftToRight, icons, 10, text, dpi);
+                dc.DrawText(g, new System.Windows.Point(pad + cw - 46 * (3 - i) + (46 - g.Width) / 2, pad + (titleH - g.Height) / 2));
+            }
+            // The content, unscaled: the brush's viewbox is the element's own layout box, not its drawn bounds.
+            var brush = new VisualBrush(root)
+            {
+                Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top,
+                // The visual's own coordinates already include its margin: (0, 0) is the window's client corner.
+                ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, cw, ch),
+            };
+            dc.DrawRectangle(brush, null, new Rect(pad, pad + titleH, cw, ch));
+            dc.Pop();
         }
-        var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        var bmp = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
         bmp.Render(visual);
         var enc = new PngBitmapEncoder();
         enc.Frames.Add(BitmapFrame.Create(bmp));

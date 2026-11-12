@@ -23,6 +23,7 @@ internal interface ISettingsHost
     bool StartupEnabled { get; set; }
     void ShowTimings();
     void ShowWelcome();
+    void ShowTutorial();
     void ClearCliContext();
     string DiagnosticsText();
     /// <summary>Checks GitHub now (opening the update window if there's one) and returns a short status line.</summary>
@@ -263,7 +264,8 @@ internal sealed partial class SettingsWindow : Window
     private void OpenConfig_Click(object sender, RoutedEventArgs e) => Open(AppConfig.FilePath);
     private void OpenFolder_Click(object sender, RoutedEventArgs e) => Open(AppConfig.Dir);
     private void Source_Click(object sender, RoutedEventArgs e) => Open(AppInfo.SourceUrl);
-    private void NvidiaKey_Click(object sender, RoutedEventArgs e) => Open("https://build.nvidia.com/");
+    private void NvidiaKey_Click(object sender, RoutedEventArgs e) => Open(AppInfo.NvidiaKeysUrl);
+    private void Tutorial_Click(object sender, RoutedEventArgs e) => _host.ShowTutorial();
     private void Issues_Click(object sender, RoutedEventArgs e) => Open(AppInfo.SourceUrl + "/issues");
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)

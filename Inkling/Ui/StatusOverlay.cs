@@ -44,18 +44,18 @@ internal sealed class StatusOverlay : IDisposable
 
     public void ShowThinking(nint target, string backend)
     {
-        if (Style == IndicatorStyle.Bar) _bar.Display(target, $"Inkling ▸ asking {backend}… (Esc = cancel)", InklingArt.Amber, 0);
-        else _icon.Start(target, BadgeIndicator.Mode.Thinking);
+        if (Style == IndicatorStyle.Bar) _bar.Display(target, $"Inkling ▸ asking {backend}… (Esc = cancel)", InklingArt.Thinking, 0);
+        else { _bar.HideNow(); _icon.Start(target, BadgeIndicator.Mode.Thinking); }
     }
 
     public void ShowMessage(nint target, string text, bool isError, int autoHideMs)
     {
         if (Style == IndicatorStyle.Bar)
         {
-            _bar.Display(target, "Inkling ▸ " + text, isError ? InklingArt.Red : InklingArt.Green, autoHideMs);
+            _bar.Display(target, "Inkling ▸ " + text, isError ? InklingArt.Error : InklingArt.Done, autoHideMs);
             return;
         }
-        // Success needs no badge (the answer is the signal); an error shows "i_err" briefly.
+        // An error shows "i_err" briefly; other notices just clear the badge.
         if (isError) _icon.Start(target, BadgeIndicator.Mode.Error);
         else _icon.Stop();
         // The badge has no room for text: anything worth reading goes to a tray notification. Routine
@@ -63,11 +63,18 @@ internal sealed class StatusOverlay : IDisposable
         if (isError || !(text.StartsWith("Cancelled", StringComparison.Ordinal) || text == "Not typed")) Message?.Invoke(text, isError);
     }
 
+    /// <summary>The answer is in: "i_fin" for a moment (badge), or the bar goes away.</summary>
+    public void ShowDone(nint target)
+    {
+        if (Style == IndicatorStyle.Bar) _bar.HideNow();
+        else { _bar.HideNow(); _icon.Start(target, BadgeIndicator.Mode.Done); }
+    }
+
     /// <summary>A question that needs an answer (risky command): always the text bar, whatever the style, until hidden.</summary>
     public void ShowConfirm(nint target, string text)
     {
         _icon.Stop();
-        _bar.Display(target, "Inkling ▸ " + text, InklingArt.Red, 0);
+        _bar.Display(target, "Inkling ▸ " + text, InklingArt.Error, 0);
     }
 
     public void HideNow()
@@ -120,13 +127,13 @@ internal sealed class StatusOverlay : IDisposable
 }
 
 /// <summary>
-/// A small "i_rdy" badge in the top-right corner of the screen, in a terminal font and Inkling's orange, on
-/// black or white to match the theme. "i_rdy" (cursor blinking) while you type, "i_..." while thinking,
+/// A small badge in the top-right corner of the screen, in a terminal font, on black or white to match the theme:
+/// "i_rdy" in orange while you type, "i_thnk" in blue while thinking, "i_fin" in green when the answer is in,
 /// "i_err" in red on an error. Per-pixel alpha (UpdateLayeredWindow); never takes focus or clicks.
 /// </summary>
 internal sealed class BadgeIndicator : Form
 {
-    public enum Mode { Ready, Thinking, Error }
+    public enum Mode { Ready, Thinking, Done, Error }
 
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 100 };
     private Mode _mode;
@@ -178,10 +185,10 @@ internal sealed class BadgeIndicator : Form
         _startTick = Environment.TickCount64;
         var screen = target != 0 ? Screen.FromHandle(target) : Screen.PrimaryScreen!;
         _scale = DeviceDpi / 96f;
-        // Five monospace characters in every state, so the badge never changes size.
+        // Sized for the longest state ("i_thnk"), so the badge never changes size.
         using (var font = MonoFont(12f * _scale))
         {
-            var text = TextRenderer.MeasureText("i_rdy", font, Size.Empty, TextFormatFlags.NoPadding);
+            var text = TextRenderer.MeasureText(Widest, font, Size.Empty, TextFormatFlags.NoPadding);
             _size = new Size(text.Width + (int)Math.Round(14 * _scale), text.Height + (int)Math.Round(6 * _scale));
         }
         int margin = (int)Math.Round(8 * _scale);
@@ -199,12 +206,26 @@ internal sealed class BadgeIndicator : Form
         if (Visible) Hide();
     }
 
-    /// <summary>The badge text for a state at time <paramref name="t"/> (seconds); null when it should hide.</summary>
+    internal const string Widest = "i_thnk";
+
+    /// <summary>
+    /// The badge text for a state at time <paramref name="t"/> (seconds); null when it should hide. The underscore
+    /// blinks like a cursor: slowly while ready, faster while thinking.
+    /// </summary>
     internal static string? TextAt(Mode mode, double t) => mode switch
     {
-        Mode.Ready => (int)(t / 0.53) % 2 == 0 ? "i_rdy" : "i rdy",            // the underscore blinks like a cursor
-        Mode.Thinking => "i_" + new string('.', 1 + (int)(t / 0.3) % 3).PadRight(3),
+        Mode.Ready => (int)(t / 0.53) % 2 == 0 ? "i_rdy" : "i rdy",
+        Mode.Thinking => (int)(t / 0.25) % 2 == 0 ? "i_thnk" : "i thnk",
+        Mode.Done => t > 1.2 ? null : "i_fin",
         _ => t > 2.0 ? null : "i_err",
+    };
+
+    internal static Color ColorFor(Mode mode) => mode switch
+    {
+        Mode.Ready => InklingArt.Accent,
+        Mode.Thinking => InklingArt.Thinking,
+        Mode.Done => InklingArt.Done,
+        _ => InklingArt.Error,
     };
 
     /// <summary>Draws the badge into a bitmap of <paramref name="size"/> (also used for the README GIFs).</summary>
@@ -223,7 +244,7 @@ internal sealed class BadgeIndicator : Form
         }
         using var font = MonoFont(12f * scale);
         using var brush = new SolidBrush(color);
-        // Count trailing spaces ("i_.  ") so the text never shifts as the dots grow.
+        // Count trailing spaces so text of any length stays centred the same way.
         var fmt = new StringFormat(StringFormatFlags.MeasureTrailingSpaces) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         g.DrawString(text, font, brush, new RectangleF(0, 0, size.Width, size.Height), fmt);
     }
@@ -236,7 +257,7 @@ internal sealed class BadgeIndicator : Form
         if (text == null) { Stop(); return; }
         using var bmp = new Bitmap(_size.Width, _size.Height, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bmp))
-            DrawBadge(g, _size, _scale, text, _mode == Mode.Error ? InklingArt.Red : InklingArt.Accent, Dark);
+            DrawBadge(g, _size, _scale, text, ColorFor(_mode), Dark);
         Push(bmp);
     }
 

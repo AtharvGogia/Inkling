@@ -26,6 +26,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     private DiagnosticsForm? _diagnostics;
     private SettingsWindow? _settings;
     private WelcomeWindow? _welcome;
+    private TutorialWindow? _tutorial;
     private UpdateWindow? _updateWindow;
     private Release? _available;
     private readonly ToolStripMenuItem _updateItem;
@@ -66,6 +67,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         menu.Items.Add(_pauseItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Help", null,
+            new ToolStripMenuItem("Tutorial", null, (_, _) => ShowTutorial()),
             new ToolStripMenuItem("Welcome guide", null, (_, _) => ShowWelcome()),
             new ToolStripMenuItem("Check for updates…", null, async (_, _) =>
             {
@@ -170,6 +172,14 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _welcome = new WelcomeWindow(this, ShowSettings);
         _welcome.Closed += (_, _) => _welcome = null;
         ShowWpf(_welcome);
+    }
+
+    public void ShowTutorial()
+    {
+        if (_tutorial != null) { _tutorial.Activate(); return; }
+        _tutorial = new TutorialWindow(_config);
+        _tutorial.Closed += (_, _) => _tutorial = null;
+        ShowWpf(_tutorial);
     }
 
     public void ShowSettings()
@@ -369,6 +379,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _updateWindow?.Close();
         _settings?.Close();
         _welcome?.Close();
+        _tutorial?.Close();
         _tray.Visible = false;
         _capture.Dispose();
         _backend.Dispose();

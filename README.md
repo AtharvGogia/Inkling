@@ -12,20 +12,32 @@ Inkling puts a short answer right where you're typing, in any app on Windows. Pr
 It works in terminals, editors, browsers, Notepad, Excel, chat apps: anywhere you can type. Answers are typed in, never run, so you always press Enter yourself.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/AtharvGogia/Inkling?include_prereleases&label=Latest%20Release)](https://github.com/AtharvGogia/Inkling/releases)
-[![GitHub Downloads](https://img.shields.io/github/downloads/AtharvGogia/Inkling/total?label=Total%20Downloads)](https://github.com/AtharvGogia/Inkling/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/AtharvGogia/Inkling-for-Windows?include_prereleases&label=Latest%20Release)](https://github.com/AtharvGogia/Inkling-for-Windows/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/AtharvGogia/Inkling-for-Windows/total?label=Total%20Downloads)](https://github.com/AtharvGogia/Inkling-for-Windows/releases)
 
 Made by **Atharv Gogia**. Open source under the [MIT licence](LICENSE). It's a one-person side project, so if something breaks or you have an idea, I'd really like to hear about it.
 
 ## Download
 
-Get `Inkling-Setup-x.y.z.exe` from the [Releases page](https://github.com/AtharvGogia/Inkling/releases) and run it. It installs for your user only (no admin prompt) and includes everything it needs. Windows 11, 64-bit. It should also run on Windows 10 (1809 or later), but it hasn't been tested there, and its windows are designed for Windows 11.
+Get `Inkling-Setup-x.y.z.exe` from the [Releases page](https://github.com/AtharvGogia/Inkling-for-Windows/releases) and run it. It installs for your user only (no admin prompt) and includes everything it needs. Windows 11, 64-bit. It should also run on Windows 10 (1809 or later), but it hasn't been tested there, and its windows are designed for Windows 11.
 
 The installer isn't code-signed, so Windows SmartScreen may say "Windows protected your PC" the first time: choose **More info → Run anyway**.
 
-Inkling answers with NVIDIA's free API, so you'll need a free key from [build.nvidia.com](https://build.nvidia.com/). The welcome window that opens on first start asks for it, checks that it works, and keeps it in Windows Credential Manager.
+### Get a free NVIDIA API key
 
-<img src="docs/media/welcome.png" width="480" alt="The welcome window: how it works, the NVIDIA API key, and start with Windows">
+Inkling answers with NVIDIA's free API, so it needs a key. It takes about a minute:
+
+1. Open [build.nvidia.com/settings/api-keys](https://build.nvidia.com/settings/api-keys) and sign in (a free NVIDIA account is enough).
+2. Click **Generate API Key** and copy the key. It starts with `nvapi-`.
+3. Paste it into Inkling's welcome window, which opens the first time Inkling starts, and click **Save and test**. Later, it's in **Settings → Model**.
+
+The key is kept in Windows Credential Manager (as `Inkling:nim`), never in a file. If you already have `NVIDIA_API_KEY` set in your environment, Inkling uses that.
+
+<img src="docs/media/welcome.png" width="480" alt="The welcome window: how it works, the three steps to get an NVIDIA API key, and start with Windows">
+
+There's also a full **tutorial**, one chapter per feature, including the key and the optional command-line tools: click the tray icon's menu → **Help → Tutorial**, or **Settings → About → Tutorial**.
+
+<img src="docs/media/tutorial-key.png" width="600" alt="The Inkling tutorial, open at the chapter on getting a free NVIDIA key">
 
 Inkling checks GitHub for a new version once a day and offers it with a one-click update. You can also click the tray icon → **Help → Check for updates…**.
 
@@ -33,7 +45,7 @@ Inkling checks GitHub for a new version once a day and offers it with a one-clic
 
 ### Ask
 
-Press **Ctrl+Alt+Space**, type your request, press **Enter**. A small `i_rdy` appears in the top-right corner of the screen while you type. While it thinks, your text becomes a quick `...` and the corner shows `i_...`. Then the answer is typed in place of your request.
+Press **Ctrl+Alt+Space**, type your request, press **Enter**. A small `i_rdy` appears in the top-right corner of the screen while you type (orange). While it thinks, your text becomes a quick `...` and the corner shows `i_thnk` (blue); when the answer is in, `i_fin` (green), and then it goes away. Then the answer is typed in place of your request.
 
 Inkling knows which app you're in and tailors the answer to it: a bash command in a WSL terminal, a PowerShell command in PowerShell, a formula in Excel, code in the right language in your editor (from the file name in the window title), plain words in Notepad.
 
@@ -43,7 +55,7 @@ Inkling knows which app you're in and tailors the answer to it: a bash command i
 
 ### Ask about selected text
 
-Select some text and press **Ctrl+Alt+Enter**. The selection is the request, and the answer replaces it. Nothing appears in the corner: the selection turning into the answer is the signal.
+Select some text and press **Ctrl+Alt+Enter**. The selection is the request, and the answer replaces it. The corner shows `i_thnk` while it works and `i_fin` when it's done.
 
 ![Selecting "translate to french: good morning, my friend" in Notepad, pressing Ctrl+Alt+Enter, and getting "Bonjour, mon ami" in its place](docs/media/select.gif)
 
@@ -51,7 +63,7 @@ The selection is copied with Ctrl+C and your clipboard is put back right after (
 
 ### Try again
 
-Not quite right? Press **Ctrl+Alt+R** straight away. The answer is swapped for a different one (quietly, with no corner badge), and the model is told which answers you passed on.
+Not quite right? Press **Ctrl+Alt+R** straight away. The answer is swapped for a different one (with `i_thnk`, then `i_fin`, in the corner), and the model is told which answers you passed on.
 
 ![In Notepad, "another word for happy" becomes "joyful"; Ctrl+Alt+R swaps it for "cheerful"](docs/media/retry.gif)
 
@@ -85,7 +97,7 @@ Click the tray icon. Changes apply straight away.
 - **Typing:** the `i_rdy` corner badge or a bar next to the cursor, the `...` animation, typing speed, a slower speed for apps that drop fast typing (Notepad), and one-line answers.
 - **Snippets:** your instant replies.
 - **Privacy:** the risky-command check, apps where Inkling stays off (password managers by default; add games or remote desktops), and whether window titles are sent.
-- **About:** updates, the welcome guide, request timings, the log, and *Copy diagnostics* for bug reports.
+- **About:** updates, the tutorial, the welcome guide, request timings, the log, and *Copy diagnostics* for bug reports.
 
 ## Models and speed
 
@@ -103,7 +115,7 @@ The two models on offer were picked from NVIDIA's free catalog: about 30 of its 
 
 Models that think before answering are accurate but far too slow to type in place. The full report is in [`bench/results`](bench/results), and the questions are in [`bench/questions.json`](bench/questions.json).
 
-The free key allows about 40 requests a minute. Inkling stays under that and tells you if you hit it. Settings → Model → *Use a command-line tool instead* can switch to the Claude Code or Gemini (Antigravity) CLI if you have one installed and signed in.
+The free key allows about 40 requests a minute. Inkling stays under that and tells you if you hit it. Settings → Model → *Use a command-line tool instead* can switch to the Claude Code or Gemini (Antigravity) CLI if you have one installed and signed in; the tutorial's chapter 9 walks through setting each one up. For Claude Code that's Node.js 18+ and `npm install -g @anthropic-ai/claude-code`, then running `claude` once to sign in.
 
 ## Privacy
 
@@ -169,7 +181,7 @@ dotnet test Inkling.Tests
 - `RiskGuard.cs`, `Snippets.cs`, `Updates.cs`, `Secrets.cs` (Credential Manager), `Diagnostics.cs` (timings).
 - `Ui/InklingArt.cs`: the logo, drawn from Georgia italic. `docs/media/logo.svg` is the icon as a vector, for anywhere it's needed.
 - `Inkling.Tests/`: the unit tests.
-- `Ui/Wpf/`: Settings, welcome and update windows (WPF with the Windows 11 look). `Ui/StatusOverlay.cs`: the `i_rdy` corner badge and the bar.
+- `Ui/Wpf/`: Settings, welcome, tutorial and update windows (WPF with the Windows 11 look). `Ui/StatusOverlay.cs`: the corner badge (`i_rdy`, `i_thnk`, `i_fin`, `i_err`) and the bar.
 - `installer/Inkling.iss`: the per-user Inno Setup installer.
 
 ## Publishing a release
@@ -184,7 +196,7 @@ The update window shows the release's description as "what's new". Drafts and pr
 
 ## Feedback
 
-If something doesn't work, or you'd like it to do something it doesn't, [open an issue](https://github.com/AtharvGogia/Inkling/issues). Settings → About → *Copy diagnostics* puts the useful details on the clipboard (never your key or what you typed). Ideas are just as welcome as bugs.
+If something doesn't work, or you'd like it to do something it doesn't, [open an issue](https://github.com/AtharvGogia/Inkling-for-Windows/issues). Settings → About → *Copy diagnostics* puts the useful details on the clipboard (never your key or what you typed). Ideas are just as welcome as bugs.
 
 ## Licence
 

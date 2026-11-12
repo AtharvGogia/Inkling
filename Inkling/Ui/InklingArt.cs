@@ -14,10 +14,13 @@ internal static class InklingArt
 {
     /// <summary>Inkling's colour (#FF7D00): the dot, the cursor, the light while you type, the Settings controls.</summary>
     public static readonly Color Accent = Color.FromArgb(0xFF, 0x7D, 0x00);
-    /// <summary>Thinking (#E9C46A), done (#2A9D8F) and error (#D62839), for the light.</summary>
-    public static readonly Color Amber = Color.FromArgb(0xE9, 0xC4, 0x6A);
-    public static readonly Color Green = Color.FromArgb(0x2A, 0x9D, 0x8F);
-    public static readonly Color Red = Color.FromArgb(0xD6, 0x28, 0x39);
+    /// <summary>
+    /// Thinking (blue #4D9BFF), done (green #2DBE6C) and error (red #FF5A5F): picked at about the same lightness
+    /// as the orange, so the badge's states read as one set and stay legible on black and on white.
+    /// </summary>
+    public static readonly Color Thinking = Color.FromArgb(0x4D, 0x9B, 0xFF);
+    public static readonly Color Done = Color.FromArgb(0x2D, 0xBE, 0x6C);
+    public static readonly Color Error = Color.FromArgb(0xFF, 0x5A, 0x5F);
     /// <summary>The icon tile and the ink of the letters.</summary>
     public static readonly Color Paper = Color.FromArgb(0xFB, 0xF8, 0xF4);
     public static readonly Color PaperEdge = Color.FromArgb(0xE6, 0xDE, 0xD3);

@@ -29,7 +29,7 @@ internal static class ReadmeMedia
     private static readonly WpfFontFamily Mono = new("Cascadia Mono, Consolas");
     private static readonly WpfFontFamily Icons = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
-    private enum Light { Off, Listening, Thinking }
+    private enum Light { Off, Listening, Thinking, Done }
 
     /// <summary>What a frame shows: the line being edited, and the overlays.</summary>
     private sealed record Frame(string Before, string Selected, string After, bool Caret, Light Light, string? Key, string? Confirm);
@@ -74,8 +74,8 @@ internal static class ReadmeMedia
             if (t < 0.9) return new("", "", "", Blink(t), Light.Off, null, null);
             if (t < 3.1) return new(Typed(req, t, 1.3, 16), "", "", true, Light.Listening, t < 1.9 ? "Ctrl + Alt + Space" : null, null);
             if (t < 4.4) return new(t < 3.25 ? req : Dots(t, 3.25), "", "", true, Light.Thinking, t < 3.9 ? "Enter" : null, null);
-            if (t < 5.4) return new(Typed(ans, t, 4.4, 40), "", "", true, Light.Off, null, null);
-            return new(ans, "", "", Blink(t), t < 6.0 ? Light.Off : Light.Off, null, null);
+            if (t < 5.1) return new(Typed(ans, t, 4.4, 40), "", "", true, Light.Thinking, null, null);
+            return new(ans, "", "", Blink(t), t < 6.3 ? Light.Done : Light.Off, null, null);
         });
     }
 
@@ -92,9 +92,9 @@ internal static class ReadmeMedia
                 return new(text[..^sel], text[^sel..], "", false, Light.Off, null, null);
             }
             if (t < 2.2) return new("", text, "", false, Light.Off, "Ctrl + Alt + Enter", null);
-            if (t < 3.6) return new(Dots(t, 2.2), "", "", true, Light.Off, t < 2.9 ? "Ctrl + Alt + Enter" : null, null);
-            if (t < 4.2) return new(Typed(ans, t, 3.6, 40), "", "", true, Light.Off, null, null);
-            return new(ans, "", "", Blink(t), t < 4.8 ? Light.Off : Light.Off, null, null);
+            if (t < 3.6) return new(Dots(t, 2.2), "", "", true, Light.Thinking, t < 2.9 ? "Ctrl + Alt + Enter" : null, null);
+            if (t < 4.0) return new(Typed(ans, t, 3.6, 40), "", "", true, Light.Thinking, null, null);
+            return new(ans, "", "", Blink(t), t < 5.2 ? Light.Done : Light.Off, null, null);
         });
     }
 
@@ -107,10 +107,11 @@ internal static class ReadmeMedia
             if (t < 0.6) return new("", "", "", Blink(t), Light.Off, null, null);
             if (t < 2.4) return new(Typed(req, t, 1.0, 16), "", "", true, Light.Listening, t < 1.5 ? "Ctrl + Alt + Space" : null, null);
             if (t < 3.4) return new(t < 2.5 ? req : Dots(t, 2.5), "", "", true, Light.Thinking, t < 3.0 ? "Enter" : null, null);
-            if (t < 4.6) return new(Typed("joyful", t, 3.4, 30), "", "", Blink(t), t < 4.0 ? Light.Off : Light.Off, null, null);
-            if (t < 5.8) return new(t < 4.75 ? "joyful" : Dots(t, 4.75), "", "", true, Light.Off, t < 5.3 ? "Ctrl + Alt + R" : null, null);
-            if (t < 6.4) return new(Typed("cheerful", t, 5.8, 30), "", "", true, Light.Off, null, null);
-            return new("cheerful", "", "", Blink(t), t < 6.9 ? Light.Off : Light.Off, null, null);
+            if (t < 3.65) return new(Typed("joyful", t, 3.4, 30), "", "", true, Light.Thinking, null, null);
+            if (t < 4.6) return new("joyful", "", "", Blink(t), Light.Done, null, null);
+            if (t < 5.8) return new(t < 4.75 ? "joyful" : Dots(t, 4.75), "", "", true, Light.Thinking, t < 5.3 ? "Ctrl + Alt + R" : null, null);
+            if (t < 6.1) return new(Typed("cheerful", t, 5.8, 30), "", "", true, Light.Thinking, null, null);
+            return new("cheerful", "", "", Blink(t), t < 7.3 ? Light.Done : Light.Off, null, null);
         });
     }
 
@@ -125,8 +126,8 @@ internal static class ReadmeMedia
             if (t < 2.8) return new(Typed(req, t, 1.0, 16), "", "", true, Light.Listening, t < 1.5 ? "Ctrl + Alt + Space" : null, null);
             if (t < 3.8) return new(t < 2.9 ? req : Dots(t, 2.9), "", "", true, Light.Thinking, t < 3.4 ? "Enter" : null, null);
             if (t < 6.4) return new("...", "", "", false, Light.Off, t > 5.8 ? "Enter" : null, bar);
-            if (t < 7.2) return new(Typed(ans, t, 6.4, 40), "", "", true, Light.Off, null, null);
-            return new(ans, "", "", Blink(t), Light.Off, null, null);
+            if (t < 7.1) return new(Typed(ans, t, 6.4, 40), "", "", true, Light.Thinking, null, null);
+            return new(ans, "", "", Blink(t), t < 8.3 ? Light.Done : Light.Off, null, null);
         });
     }
 
@@ -143,13 +144,7 @@ internal static class ReadmeMedia
         Add(root, new System.Windows.Shapes.Ellipse { Width = 520, Height = 520, Fill = B(0x22FFFFFF) }, -140, 220);
         Add(root, new System.Windows.Shapes.Ellipse { Width = 380, Height = 380, Fill = B(0x18FFFFFF) }, 700, -120);
 
-        // Taskbar
-        var taskbar = new WpfBorder { Width = W, Height = 44, Background = B(0xE6202024) };
-        var icons = new StackPanel { Orientation = WpfOrientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var c in new uint[] { 0xFF3A8EE6, 0xFF2D2D30, 0xFFF2C94C, 0xFFFF7D00 })
-            icons.Children.Add(new WpfBorder { Width = 24, Height = 24, CornerRadius = new CornerRadius(5), Background = B(c), Margin = new Thickness(7, 0, 7, 0) });
-        taskbar.Child = icons;
-        Add(root, taskbar, 0, H - 44);
+        Add(root, Taskbar(s.Terminal), 0, H - 44);
 
         // App window
         double wx = 110, wy = 70, ww = 740, wh = 340;
@@ -215,8 +210,8 @@ internal static class ReadmeMedia
         // The "i_rdy" badge, top-right of the screen, as Inkling draws it (dark theme).
         if (f.Light != Light.Off)
         {
-            var mode = f.Light == Light.Thinking ? BadgeIndicator.Mode.Thinking : BadgeIndicator.Mode.Ready;
-            var img = Badge(BadgeIndicator.TextAt(mode, t) ?? "i_rdy");
+            var mode = f.Light switch { Light.Thinking => BadgeIndicator.Mode.Thinking, Light.Done => BadgeIndicator.Mode.Done, _ => BadgeIndicator.Mode.Ready };
+            var img = Badge(mode, BadgeIndicator.TextAt(mode, mode == BadgeIndicator.Mode.Done ? 0 : t) ?? "i_rdy");
             Add(root, new WpfImage { Source = img, Width = img.PixelWidth, Height = img.PixelHeight }, W - 8 - img.PixelWidth, 8);
         }
 
@@ -242,26 +237,127 @@ internal static class ReadmeMedia
         return root;
     }
 
-    private static readonly Dictionary<string, BitmapSource> Badges = [];
+    // ---- Taskbar: Windows 11 style, drawn with Windows' own icon font (Segoe Fluent Icons) --------------
 
-    /// <summary>The badge drawn by the app's own code, at the size it has on a 100% display.</summary>
-    private static BitmapSource Badge(string text)
+    private static FrameworkElement Taskbar(bool terminalActive)
     {
-        if (Badges.TryGetValue(text, out var cached)) return cached;
-        System.Drawing.Size size;
-        using (var font = BadgeIndicator.MonoFont(12f))
-        {
-            var m = TextRenderer.MeasureText("i_rdy", font, System.Drawing.Size.Empty, TextFormatFlags.NoPadding);
-            size = new System.Drawing.Size(m.Width + 14, m.Height + 6);
-        }
-        using var bmp = new System.Drawing.Bitmap(size.Width, size.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using (var g = System.Drawing.Graphics.FromImage(bmp)) BadgeIndicator.DrawBadge(g, size, 1f, text, InklingArt.Accent, dark: true);
+        var bar = new Grid { Width = W, Height = 44, Background = B(0xF01C1C1C) };
+        bar.Children.Add(new WpfBorder { Height = 1, VerticalAlignment = VerticalAlignment.Top, Background = B(0x30FFFFFF) });
+
+        var apps = new StackPanel { Orientation = WpfOrientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        apps.Children.Add(TaskbarButton(StartLogo(), running: false, active: false));
+        apps.Children.Add(TaskbarButton(Glyph("\uE721", 17, 0xFFE6E6E6), false, false));                   // Search
+        apps.Children.Add(TaskbarButton(Glyph("\uE8D5", 20, 0xFFF4C44E), true, false));                    // File Explorer
+        apps.Children.Add(TaskbarButton(TerminalIcon(), true, terminalActive));                                // Terminal
+        apps.Children.Add(TaskbarButton(NotepadIcon(), true, !terminalActive));                                // Notepad
+        apps.Children.Add(TaskbarButton(Glyph("\uE713", 18, 0xFFB8B8B8), false, false));                   // Settings
+        bar.Children.Add(apps);
+
+        // System tray: overflow, Inkling's own icon, Wi-Fi, volume, battery, clock.
+        var tray = new StackPanel { Orientation = WpfOrientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+        tray.Children.Add(TrayItem(Glyph("\uE70E", 11, 0xFFE6E6E6)));
+        tray.Children.Add(TrayItem(new WpfImage { Source = TrayIcon(), Width = 16, Height = 16 }));
+        var status = new StackPanel { Orientation = WpfOrientation.Horizontal, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        foreach (var g in new[] { "\uE701", "\uE767", "\uE83F" })
+            status.Children.Add(new WpfBorder { Margin = new Thickness(4, 0, 4, 0), Child = Glyph(g, 14, 0xFFE6E6E6) });
+        tray.Children.Add(status);
+        var clock = new StackPanel { Margin = new Thickness(6, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center };
+        clock.Children.Add(new WpfTextBlock { Text = "1:47 PM", FontFamily = Ui, FontSize = 11.5, Foreground = B(0xFFE6E6E6), HorizontalAlignment = System.Windows.HorizontalAlignment.Right });
+        clock.Children.Add(new WpfTextBlock { Text = "13-11-2026", FontFamily = Ui, FontSize = 11.5, Foreground = B(0xFFE6E6E6), HorizontalAlignment = System.Windows.HorizontalAlignment.Right });
+        tray.Children.Add(clock);
+        bar.Children.Add(tray);
+        return bar;
+    }
+
+    private static WpfTextBlock Glyph(string g, double size, uint color) => new()
+    {
+        Text = g, FontFamily = Icons, FontSize = size, Foreground = B(color),
+        HorizontalAlignment = System.Windows.HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    /// <summary>A 40 px taskbar slot; running apps get a short line underneath, the active one a longer accent line.</summary>
+    private static FrameworkElement TaskbarButton(FrameworkElement icon, bool running, bool active)
+    {
+        var g = new Grid { Width = 40, Height = 40, Margin = new Thickness(2, 0, 2, 0) };
+        if (active) g.Children.Add(new WpfBorder { CornerRadius = new CornerRadius(4), Background = B(0x18FFFFFF), BorderBrush = B(0x14FFFFFF), BorderThickness = new Thickness(1) });
+        var holder = new WpfBorder { Width = 24, Height = 24, Child = icon, HorizontalAlignment = System.Windows.HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 3) };
+        g.Children.Add(holder);
+        if (running)
+            g.Children.Add(new WpfBorder
+            {
+                Width = active ? 16 : 6, Height = 3, CornerRadius = new CornerRadius(1.5), VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 2),
+                Background = B(active ? 0xFF60CDFF : 0xFF9A9A9A),
+            });
+        return g;
+    }
+
+    private static FrameworkElement TrayItem(UIElement content) =>
+        new WpfBorder { Width = 26, Height = 32, Child = content, VerticalAlignment = VerticalAlignment.Center };
+
+    /// <summary>The Windows logo: four squares in Windows 11's blue.</summary>
+    private static FrameworkElement StartLogo()
+    {
+        var g = new Grid { Width = 19, Height = 19 };
+        foreach (var (x, y) in new[] { (0, 0), (10, 0), (0, 10), (10, 10) })
+            g.Children.Add(new WpfBorder
+            {
+                Width = 9, Height = 9, HorizontalAlignment = System.Windows.HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(x, y, 0, 0), CornerRadius = new CornerRadius(1),
+                Background = new LinearGradientBrush(WpfColor.FromRgb(0x4C, 0xC2, 0xFF), WpfColor.FromRgb(0x0A, 0x78, 0xD4), 90),
+            });
+        return g;
+    }
+
+    private static FrameworkElement TerminalIcon() => new WpfBorder
+    {
+        Width = 22, Height = 20, CornerRadius = new CornerRadius(4), Background = B(0xFF2B2B2B), BorderBrush = B(0xFF5A5A5A), BorderThickness = new Thickness(1),
+        Child = new WpfTextBlock { Text = ">_", FontFamily = Mono, FontSize = 10, FontWeight = FontWeights.Bold, Foreground = B(0xFFE6E6E6), Margin = new Thickness(3, 2, 0, 0) },
+    };
+
+    private static FrameworkElement NotepadIcon()
+    {
+        var lines = new StackPanel { Margin = new Thickness(4, 5, 4, 0) };
+        foreach (var w in new[] { 12.0, 10, 12, 7 })
+            lines.Children.Add(new WpfBorder { Width = w, Height = 1.6, Background = B(0xFF1F5FA8), HorizontalAlignment = System.Windows.HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 2.4) });
+        return new WpfBorder { Width = 19, Height = 22, CornerRadius = new CornerRadius(3), Background = B(0xFFE8F1FB), BorderBrush = B(0xFF6FA8DC), BorderThickness = new Thickness(1), Child = lines };
+    }
+
+    private static BitmapSource? _trayIcon;
+
+    /// <summary>Inkling's tray icon, drawn by the same code as the real one.</summary>
+    private static BitmapSource TrayIcon()
+    {
+        if (_trayIcon != null) return _trayIcon;
+        using var bmp = new System.Drawing.Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = System.Drawing.Graphics.FromImage(bmp)) InklingArt.DrawIcon(g, new System.Drawing.RectangleF(1, 1, 30, 30));
         using var ms = new MemoryStream();
         bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
         ms.Position = 0;
         var img = BitmapFrame.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
         img.Freeze();
-        return Badges[text] = img;
+        return _trayIcon = img;
+    }
+
+    private static readonly Dictionary<string, BitmapSource> Badges = [];
+
+    /// <summary>The badge drawn by the app's own code, at the size it has on a 100% display.</summary>
+    private static BitmapSource Badge(BadgeIndicator.Mode mode, string text)
+    {
+        if (Badges.TryGetValue(mode + text, out var cached)) return cached;
+        System.Drawing.Size size;
+        using (var font = BadgeIndicator.MonoFont(12f))
+        {
+            var m = TextRenderer.MeasureText(BadgeIndicator.Widest, font, System.Drawing.Size.Empty, TextFormatFlags.NoPadding);
+            size = new System.Drawing.Size(m.Width + 14, m.Height + 6);
+        }
+        using var bmp = new System.Drawing.Bitmap(size.Width, size.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = System.Drawing.Graphics.FromImage(bmp)) BadgeIndicator.DrawBadge(g, size, 1f, text, BadgeIndicator.ColorFor(mode), dark: true);
+        using var ms = new MemoryStream();
+        bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        ms.Position = 0;
+        var img = BitmapFrame.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        img.Freeze();
+        return Badges[mode + text] = img;
     }
 
     private static void Add(Canvas c, UIElement e, double x, double y)

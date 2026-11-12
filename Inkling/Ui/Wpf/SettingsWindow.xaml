@@ -198,6 +198,7 @@
 
                             <TextBlock Text="Help" Style="{StaticResource Section}" />
                             <WrapPanel>
+                                <Button Content="Tutorial" Click="Tutorial_Click" Margin="0,0,8,8" />
                                 <Button Content="Welcome guide" Click="Welcome_Click" Margin="0,0,8,8" />
                                 <Button Content="Request timings" Click="Timings_Click" Margin="0,0,8,8" />
                                 <Button Content="Open log" Click="OpenLog_Click" Margin="0,0,8,8" />

@@ -14,7 +14,7 @@ internal sealed record Release(Version Version, string Tag, string Notes, string
 /// </summary>
 internal static class Updates
 {
-    private const string Api = "https://api.github.com/repos/AtharvGogia/Inkling/releases/latest";
+    private const string Api = "https://api.github.com/repos/AtharvGogia/Inkling-for-Windows/releases/latest";
 
     private static readonly HttpClient Http = CreateClient();
 
@@ -52,7 +52,7 @@ internal static class Updates
         }
         return new Release(version, tag,
             root.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "",
-            root.GetProperty("html_url").GetString() ?? "https://github.com/AtharvGogia/Inkling/releases",
+            root.GetProperty("html_url").GetString() ?? "https://github.com/AtharvGogia/Inkling-for-Windows/releases",
             url, name);
     }
 
