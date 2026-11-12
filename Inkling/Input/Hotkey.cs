@@ -36,7 +36,10 @@ internal sealed record Hotkey(Keys Key, bool Ctrl, bool Alt, bool Shift, bool Wi
         && Shift == IsDown(VK_SHIFT)
         && Win == (IsDown(VK_LWIN) || IsDown(VK_RWIN));
 
+    /// <summary>A key's name as <see cref="Parse"/> reads it ("Space", "R", "5", "Return", "F2").</summary>
+    public static string KeyName(Keys k) => k is >= Keys.D0 and <= Keys.D9 ? ((char)('0' + (k - Keys.D0))).ToString() : k.ToString();
+
     public override string ToString() =>
-        string.Join("+", new[] { Ctrl ? "Ctrl" : null, Alt ? "Alt" : null, Shift ? "Shift" : null, Win ? "Win" : null, Key.ToString() }
+        string.Join("+", new[] { Ctrl ? "Ctrl" : null, Alt ? "Alt" : null, Shift ? "Shift" : null, Win ? "Win" : null, KeyName(Key) }
             .Where(s => s != null));
 }

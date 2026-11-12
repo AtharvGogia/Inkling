@@ -5,6 +5,11 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF for the Settings and Welcome windows (Windows 11 Fluent look, like Circularity). -->
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: Window.ThemeMode (Fluent) is marked experimental. WFO0003: DPI mode comes from the WinForms API. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
@@ -12,7 +17,12 @@
     <RootNamespace>Inkling</RootNamespace>
     <Product>Inkling</Product>
     <ApplicationIcon Condition="Exists('Assets/inkling.ico')">Assets/inkling.ico</ApplicationIcon>
-    <Version>0.2.1</Version>
+    <Version>0.4.0</Version>
+    <Authors>Atharv Gogia</Authors>
+    <Company>Atharv Gogia</Company>
+    <Description>Type a request anywhere in Windows and get a short AI answer in its place.</Description>
+    <Copyright>© 2026 Atharv Gogia</Copyright>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

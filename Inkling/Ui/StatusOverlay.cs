@@ -56,6 +56,13 @@ internal sealed class StatusOverlay : IDisposable
         if (isError || text.Contains("clipboard", StringComparison.OrdinalIgnoreCase)) Message?.Invoke(text, isError);
     }
 
+    /// <summary>A question that needs an answer (risky command): always the text bar, whatever the style, until hidden.</summary>
+    public void ShowConfirm(nint target, string text)
+    {
+        _icon.Stop();
+        _bar.Display(target, "Inkling ▸ " + text, InklingArt.Red, 0);
+    }
+
     public void HideNow()
     {
         _icon.Stop();

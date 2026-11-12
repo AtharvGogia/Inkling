@@ -10,7 +10,8 @@ public interface IAiBackend : IDisposable
     string DisplayName { get; }
     /// <summary>Starts the CLI in the background so the first request is fast.</summary>
     void Warm();
-    Task<string> AskAsync(string request, string context, CancellationToken ct);
+    /// <summary>Sends one complete user message (see <see cref="Prompt"/>) and returns the raw answer.</summary>
+    Task<string> AskAsync(string message, RequestTrace trace, CancellationToken ct);
     /// <summary>Discards the warm CLI (and any chat history it holds) and starts a fresh one.</summary>
     void ClearContext();
 }
@@ -23,11 +24,17 @@ public interface IAiBackend : IDisposable
 /// </summary>
 public abstract class StreamCliBackend : IAiBackend
 {
-    private sealed class Worker(Process process, Channel<string> lines)
+    private sealed class Worker(Process process, long spawnedAt, double spawnMs)
     {
         public Process Process { get; } = process;
-        public Channel<string> Lines { get; } = lines;
+        public Channel<string> Lines { get; } = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+        public long SpawnedAt { get; } = spawnedAt;
+        public double SpawnMs { get; } = spawnMs;
+        /// <summary>Stopwatch timestamp of the first stdout line, 0 until then.</summary>
+        public long FirstLineAt;
         public int Requests;
+        /// <summary>The last turn returned its answer before the CLI finished the turn; its tail must be drained before reuse.</summary>
+        public bool TurnOpen;
         public bool Alive => !Process.HasExited;
     }
 
@@ -43,9 +50,13 @@ public abstract class StreamCliBackend : IAiBackend
 
     protected abstract string ExecutablePath();
     protected abstract IEnumerable<string> Arguments();
-    protected abstract string BuildInputLine(string request, string context);
-    /// <summary>Returns true when <paramref name="line"/> is the final result of the turn.</summary>
-    protected abstract bool TryReadResult(JsonElement line, out string? answer, out string? error);
+    protected abstract string BuildInputLine(string message);
+    /// <summary>
+    /// Returns true when <paramref name="line"/> carries the answer (or an error). <paramref name="turnEnd"/> says whether
+    /// it is also the end of the CLI's turn; when it isn't, the answer is used right away and the rest of the turn is
+    /// skipped. May add CLI-reported stats to the trace.
+    /// </summary>
+    protected abstract bool TryReadResult(JsonElement line, RequestTrace trace, out string? answer, out string? error, out bool turnEnd);
 
     public void Warm()
     {
@@ -72,15 +83,23 @@ public abstract class StreamCliBackend : IAiBackend
         });
     }
 
-    public async Task<string> AskAsync(string request, string context, CancellationToken ct)
+    public async Task<string> AskAsync(string message, RequestTrace trace, CancellationToken ct)
     {
+        trace.Backend = DisplayName;
+        var waitStart = Stopwatch.GetTimestamp();
         await _gate.WaitAsync(ct);
+        trace.GateWaitMs = RequestTrace.Since(waitStart);
         try
         {
+            trace.ColdStart = _worker is not { Alive: true };
             var w = EnsureWorker();
+            trace.SpawnMs = w.SpawnMs;
+            trace.ProcessAgeMs = RequestTrace.Since(w.SpawnedAt);
+            var first = Interlocked.Read(ref w.FirstLineAt);
+            if (first != 0) trace.StartupOutputMs = Stopwatch.GetElapsedTime(w.SpawnedAt, first).TotalMilliseconds;
             try
             {
-                var answer = await RunTurnAsync(w, request, context, ct);
+                var answer = await RunTurnAsync(w, message, trace, ct);
                 if (++w.Requests >= Math.Max(1, Config.RequestsPerProcess)) Retire();
                 return answer;
             }
@@ -94,12 +113,17 @@ public abstract class StreamCliBackend : IAiBackend
         finally { _gate.Release(); }
     }
 
-    private async Task<string> RunTurnAsync(Worker w, string request, string context, CancellationToken ct)
+    private async Task<string> RunTurnAsync(Worker w, string message, RequestTrace trace, CancellationToken ct)
     {
+        if (w.TurnOpen) await DrainTurnAsync(w, ct);
         // Drop anything left over (e.g. init/hook events) before this turn.
         while (w.Lines.Reader.TryRead(out _)) { }
 
-        await w.Process.StandardInput.WriteLineAsync(BuildInputLine(request, context).AsMemory(), ct);
+        var input = BuildInputLine(message);
+        trace.PromptChars = message.Length;
+        trace.SentAtMs = trace.Now;
+        var sent = Stopwatch.GetTimestamp();
+        await w.Process.StandardInput.WriteLineAsync(input.AsMemory(), ct);
         await w.Process.StandardInput.FlushAsync(ct);
 
         while (true)
@@ -110,17 +134,43 @@ public abstract class StreamCliBackend : IAiBackend
             {
                 throw new InvalidOperationException($"{DisplayName} CLI exited unexpectedly (see log).");
             }
+            if (trace.OutputLines++ == 0) trace.FirstOutputMs = RequestTrace.Since(sent);
             if (line.Length == 0 || line[0] != '{') continue;
+            var parseStart = Stopwatch.GetTimestamp();
             JsonDocument doc;
             try { doc = JsonDocument.Parse(line); }
             catch (JsonException) { continue; }
             using (doc)
             {
-                if (!TryReadResult(doc.RootElement, out var answer, out var error)) continue;
+                bool done = TryReadResult(doc.RootElement, trace, out var answer, out var error, out var turnEnd);
+                trace.ParseMs += RequestTrace.Since(parseStart);
+                if (!done) continue;
+                trace.ResultMs = RequestTrace.Since(sent);
+                w.TurnOpen = !turnEnd;
                 if (error != null) throw new InvalidOperationException(error);
                 return answer ?? "";
             }
         }
+    }
+
+    /// <summary>Reads the end of the previous turn (only needed when a process answers several requests).</summary>
+    private async Task DrainTurnAsync(Worker w, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        var scratch = new RequestTrace();
+        while (true)
+        {
+            var line = await w.Lines.Reader.ReadAsync(timeout.Token);
+            if (line.Length == 0 || line[0] != '{') continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                if (TryReadResult(doc.RootElement, scratch, out _, out _, out var end) && end) break;
+            }
+            catch (JsonException) { }
+        }
+        w.TurnOpen = false;
     }
 
     private Worker EnsureWorker()
@@ -158,20 +208,25 @@ public abstract class StreamCliBackend : IAiBackend
         };
         foreach (var a in Arguments()) psi.ArgumentList.Add(a);
 
+        var spawnedAt = Stopwatch.GetTimestamp();
         var p = Process.Start(psi) ?? throw new InvalidOperationException($"Could not start {psi.FileName}");
+        var w = new Worker(p, spawnedAt, RequestTrace.Since(spawnedAt));
         ChildProcessJob.Add(p);
-        Log.Write($"{DisplayName}: started CLI pid {p.Id}");
+        Log.Write($"{DisplayName}: started CLI pid {p.Id} in {w.SpawnMs:0} ms");
 
-        var channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
         _ = Task.Run(async () =>
         {
             try
             {
                 string? line;
-                while ((line = await p.StandardOutput.ReadLineAsync()) != null) channel.Writer.TryWrite(line);
+                while ((line = await p.StandardOutput.ReadLineAsync()) != null)
+                {
+                    if (Interlocked.Read(ref w.FirstLineAt) == 0) Interlocked.Exchange(ref w.FirstLineAt, Stopwatch.GetTimestamp());
+                    w.Lines.Writer.TryWrite(line);
+                }
             }
             catch { /* process killed */ }
-            finally { channel.Writer.TryComplete(); }
+            finally { w.Lines.Writer.TryComplete(); }
         });
         _ = Task.Run(async () =>
         {
@@ -184,7 +239,7 @@ public abstract class StreamCliBackend : IAiBackend
             }
             catch { }
         });
-        return new Worker(p, channel);
+        return w;
     }
 
     private static string WorkDir()
@@ -242,9 +297,6 @@ public abstract class StreamCliBackend : IAiBackend
         return null;
     }
 
-    protected static string UserMessage(string request, string context) =>
-        $"{context}\nRequest: {request}";
-
     public void Dispose()
     {
         _disposed = true;
@@ -281,21 +333,57 @@ public sealed class ClaudeBackend(AppConfig config) : StreamCliBackend(config)
         ];
     }
 
-    protected override string BuildInputLine(string request, string context) =>
+    protected override string BuildInputLine(string message) =>
         JsonSerializer.Serialize(new
         {
             type = "user",
-            message = new { role = "user", content = UserMessage(request, context) },
+            message = new { role = "user", content = message },
         });
 
-    protected override bool TryReadResult(JsonElement line, out string? answer, out string? error)
+    protected override bool TryReadResult(JsonElement line, RequestTrace trace, out string? answer, out string? error, out bool turnEnd)
     {
         answer = error = null;
-        if (!line.TryGetProperty("type", out var t) || t.GetString() != "result") return false;
+        turnEnd = false;
+        if (!line.TryGetProperty("type", out var t)) return false;
+        if (t.GetString() == "assistant") return TryReadAssistant(line, trace, out answer);
+        if (t.GetString() != "result") return false;
+        turnEnd = true;
+        if (line.TryGetProperty("duration_ms", out var d) && d.TryGetDouble(out var dms)) trace.CliReportedMs = dms;
+        if (line.TryGetProperty("duration_api_ms", out var a) && a.TryGetDouble(out var ams)) trace.ApiMs = ams;
+        if (line.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object)
+        {
+            long Get(string name) => u.TryGetProperty(name, out var v) && v.TryGetInt64(out var n) ? n : 0;
+            trace.Tokens = $"tokens in {Get("input_tokens")} + cache read {Get("cache_read_input_tokens")} / write {Get("cache_creation_input_tokens")}, out {Get("output_tokens")}";
+        }
         var text = line.TryGetProperty("result", out var r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
         bool isError = line.TryGetProperty("is_error", out var e) && e.ValueKind == JsonValueKind.True;
         if (isError) error = text ?? "Claude CLI returned an error.";
         else answer = text;
+        return true;
+    }
+
+    /// <summary>
+    /// The model's reply arrives as an "assistant" event; the CLI then makes a second model call (a post-turn
+    /// summary) before it prints "result", which costs 1–3 s. With no tools the first text reply is the answer,
+    /// so use it straight away. CLI-made error messages (model "&lt;synthetic&gt;") still wait for "result".
+    /// </summary>
+    private static bool TryReadAssistant(JsonElement line, RequestTrace trace, out string? answer)
+    {
+        answer = null;
+        if (line.TryGetProperty("error", out _)) return false;
+        if (!line.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object) return false;
+        if (m.TryGetProperty("model", out var model) && model.GetString() == "<synthetic>") return false;
+        if (!m.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array) return false;
+        var text = string.Concat(content.EnumerateArray()
+            .Where(b => b.TryGetProperty("type", out var bt) && bt.GetString() == "text" && b.TryGetProperty("text", out _))
+            .Select(b => b.GetProperty("text").GetString()));
+        if (text.Trim().Length == 0) return false; // e.g. a thinking block: keep waiting
+        if (m.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object)
+        {
+            long Get(string name) => u.TryGetProperty(name, out var v) && v.TryGetInt64(out var n) ? n : 0;
+            trace.Tokens = $"tokens in {Get("input_tokens")} + cache read {Get("cache_read_input_tokens")} / write {Get("cache_creation_input_tokens")}; answered on the assistant message (CLI's post-turn summary skipped)";
+        }
+        answer = text;
         return true;
     }
 }
@@ -318,21 +406,34 @@ public sealed class AgyBackend(AppConfig config) : StreamCliBackend(config)
     ];
 
     // agy has no system-prompt flag, so the instructions travel with every message.
-    protected override string BuildInputLine(string request, string context) =>
+    protected override string BuildInputLine(string message) =>
         JsonSerializer.Serialize(new
         {
             @event = "user",
-            message = new { role = "user", content = Config.SystemPrompt + "\n\n" + UserMessage(request, context) },
+            message = new { role = "user", content = Config.SystemPrompt + "\n\n" + message },
         });
 
-    protected override bool TryReadResult(JsonElement line, out string? answer, out string? error)
+    protected override bool TryReadResult(JsonElement line, RequestTrace trace, out string? answer, out string? error, out bool turnEnd)
     {
         answer = error = null;
-        if (!line.TryGetProperty("event", out var ev) || ev.GetString() != "result") return false;
+        turnEnd = true;
+        if (!line.TryGetProperty("event", out var ev)) return false;
+        // The model step reports its own duration: the closest thing agy has to "model API time".
+        if (ev.GetString() == "step_update" && line.TryGetProperty("step_update", out var su) &&
+            su.TryGetProperty("step_type", out var st) && st.GetString() == "agent_response" &&
+            su.TryGetProperty("duration_seconds", out var sd) && sd.TryGetDouble(out var secs))
+            trace.ApiMs = secs * 1000;
+        if (ev.GetString() != "result") return false;
         if (!line.TryGetProperty("result", out var r) || r.ValueKind != JsonValueKind.Object)
         {
             error = "agy returned a malformed result.";
             return true;
+        }
+        if (r.TryGetProperty("duration_seconds", out var ds) && ds.TryGetDouble(out var total)) trace.CliReportedMs = total * 1000;
+        if (r.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object)
+        {
+            long Get(string name) => u.TryGetProperty(name, out var v) && v.TryGetInt64(out var n) ? n : 0;
+            trace.Tokens = $"tokens in {Get("input_tokens")} (cache read {Get("cache_read_tokens")}), out {Get("output_tokens")}, thinking {Get("thinking_tokens")}";
         }
         var status = r.TryGetProperty("status", out var s) ? s.GetString() : null;
         if (!string.Equals(status, "SUCCESS", StringComparison.OrdinalIgnoreCase))

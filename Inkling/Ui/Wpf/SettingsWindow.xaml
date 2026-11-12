@@ -1,0 +1,220 @@
+<Window x:Class="Inkling.Ui.Wpf.SettingsWindow"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Inkling.Ui.Wpf"
+        Title="Inkling settings"
+        Width="900" SizeToContent="Height"
+        ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen"
+        ThemeMode="System">
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="230" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: what Inkling is and what it's using right now. -->
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Top">
+                <Image x:Name="Logo" Width="64" Height="64" HorizontalAlignment="Left" />
+                <TextBlock Text="Inkling" FontSize="28" FontWeight="SemiBold" Margin="0,10,0,0" />
+                <TextBlock Text="Type a request anywhere in Windows and get a short answer in its place." TextWrapping="Wrap" Opacity="0.7" Margin="0,4,0,0" />
+
+                <Border CornerRadius="8" Padding="12" Margin="0,20,0,0" Background="{DynamicResource ControlFillColorDefaultBrush}">
+                    <StackPanel>
+                        <TextBlock Text="Now using" Opacity="0.65" />
+                        <TextBlock x:Name="StatusModel" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <TextBlock x:Name="StatusKey" TextWrapping="Wrap" Opacity="0.8" Margin="0,6,0,0" />
+                        <TextBlock x:Name="StatusHotkeys" TextWrapping="Wrap" Opacity="0.8" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
+                <TextBlock x:Name="VersionText" FontWeight="SemiBold" />
+                <TextBlock Opacity="0.7" Margin="0,2,0,0" TextWrapping="Wrap">
+                    <Run Text="Made by Atharv Gogia · " />
+                    <Hyperlink Click="Source_Click">GitHub</Hyperlink>
+                </TextBlock>
+            </StackPanel>
+        </DockPanel>
+
+        <DockPanel Grid.Column="1" Margin="32,0,0,0">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Reset to defaults" Click="Reset_Click" Margin="0,0,8,0"
+                        ToolTip="Everything except your API key, your app lists and start-at-sign-in." />
+                <Button Content="Done" Click="Done_Click" IsDefault="True" MinWidth="96" />
+            </StackPanel>
+
+            <!-- A fixed height, so switching tabs doesn't resize the window. -->
+            <TabControl x:Name="Tabs" Height="540">
+                <TabItem Header="General">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="4,12,12,8">
+                            <TextBlock Text="Shortcuts" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="Click a box and press the new shortcut. Esc keeps the old one; Backspace turns an optional one off." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="230" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Ask" />
+                                    <TextBlock Text="then type the request, Enter" Opacity="0.6" FontSize="12" />
+                                </StackPanel>
+                                <local:HotkeyBox x:Name="AskHotkey" Grid.Column="1" HorizontalAlignment="Left" Width="240" />
+                                <TextBlock x:Name="AskProblem" Grid.Row="1" Grid.Column="1" Foreground="#E0A030" TextWrapping="Wrap" Margin="0,2,0,8" Visibility="Collapsed" />
+
+                                <StackPanel Grid.Row="2" VerticalAlignment="Center" Margin="0,8,0,0">
+                                    <TextBlock Text="Ask about selected text" />
+                                    <TextBlock Text="the selection is the request" Opacity="0.6" FontSize="12" />
+                                </StackPanel>
+                                <local:HotkeyBox x:Name="SelectionHotkey" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left" Width="240" AllowEmpty="True" Margin="0,8,0,0" />
+                                <TextBlock x:Name="SelectionProblem" Grid.Row="3" Grid.Column="1" Foreground="#E0A030" TextWrapping="Wrap" Margin="0,2,0,8" Visibility="Collapsed" />
+
+                                <StackPanel Grid.Row="4" VerticalAlignment="Center" Margin="0,8,0,0">
+                                    <TextBlock Text="Try again" />
+                                    <TextBlock Text="right after an answer: a different one" Opacity="0.6" FontSize="12" />
+                                </StackPanel>
+                                <local:HotkeyBox x:Name="RetryHotkey" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" Width="240" AllowEmpty="True" Margin="0,8,0,0" />
+                                <TextBlock x:Name="RetryProblem" Grid.Row="5" Grid.Column="1" Foreground="#E0A030" TextWrapping="Wrap" Margin="0,2,0,0" Visibility="Collapsed" />
+                            </Grid>
+
+                            <TextBlock Text="Answer length" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,8" />
+                            <RadioButton x:Name="LengthShort" Content="One word or one command" GroupName="Length" />
+                            <RadioButton x:Name="LengthSentence" Content="A sentence or two" GroupName="Length" Margin="0,4,0,0" />
+                            <RadioButton x:Name="LengthParagraph" Content="A short paragraph" GroupName="Length" Margin="0,4,0,0" />
+
+                            <TextBlock Text="Appearance" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,8" />
+                            <WrapPanel>
+                                <RadioButton x:Name="ThemeSystem" Content="Same as Windows" GroupName="Theme" MinWidth="0" Margin="0,0,20,0" />
+                                <RadioButton x:Name="ThemeLight" Content="Light" GroupName="Theme" MinWidth="0" Margin="0,0,20,0" />
+                                <RadioButton x:Name="ThemeDark" Content="Dark" GroupName="Theme" MinWidth="0" />
+                            </WrapPanel>
+
+                            <TextBlock Text="Startup" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,8" />
+                            <CheckBox x:Name="StartupCheck" Content="Start Inkling when I sign in to Windows" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="Model">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="4,12,12,8">
+                            <TextBlock Text="Model" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="Picked from a benchmark of every model on NVIDIA's free API: 42 questions in 14 areas (commands, code, SQL, facts, maths, translation…)." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,10" />
+                            <StackPanel x:Name="ModelList" />
+
+                            <TextBlock Text="NVIDIA API key" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,4" />
+                            <TextBlock x:Name="KeyStatus" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,8" />
+                            <DockPanel>
+                                <Button x:Name="SaveKeyButton" DockPanel.Dock="Right" Content="Save" Click="SaveKey_Click" Margin="8,0,0,0" />
+                                <PasswordBox x:Name="KeyBox" ToolTip="Paste your key (starts with nvapi-)" />
+                            </DockPanel>
+                            <WrapPanel Margin="0,8,0,0">
+                                <Button Content="Test connection" Click="TestKey_Click" Margin="0,0,8,0" />
+                                <Button x:Name="RemoveKeyButton" Content="Remove saved key" Click="RemoveKey_Click" Margin="0,0,8,0" />
+                                <TextBlock x:Name="TestResult" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" />
+                            </WrapPanel>
+                            <TextBlock TextWrapping="Wrap" Opacity="0.7" Margin="0,8,0,0">
+                                <Run Text="Get a free key at " /><Hyperlink Click="NvidiaKey_Click">build.nvidia.com</Hyperlink><Run Text=". It's kept in Windows Credential Manager (as “Inkling:nim”), never in a file. The free tier allows about 40 requests a minute; Inkling keeps under that and tells you if you hit it." />
+                            </TextBlock>
+
+                            <Expander Header="Advanced: use a command-line AI instead" Margin="0,24,0,0">
+                                <StackPanel Margin="0,8,0,0">
+                                    <TextBlock Text="For when NVIDIA's API is down. These keep a CLI you're already signed in to running in the background, and are slower (1–5 s)." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                    <RadioButton x:Name="BackendNim" Content="NVIDIA API (recommended)" GroupName="Backend" />
+                                    <RadioButton x:Name="BackendClaude" GroupName="Backend" Margin="0,4,0,0" />
+                                    <RadioButton x:Name="BackendAgy" GroupName="Backend" Margin="0,4,0,0" />
+                                    <Button Content="Restart the CLI (clears its context)" Click="ClearContext_Click" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="Typing">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="4,12,12,8">
+                            <TextBlock Text="While it works" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <RadioButton x:Name="IndicatorIcon" Content="Small light in the top-left corner of the screen" GroupName="Indicator" />
+                            <RadioButton x:Name="IndicatorBar" Content="A bar with instructions next to the cursor" GroupName="Indicator" Margin="0,4,0,0" />
+                            <CheckBox x:Name="DotsCheck" Content="Show “...” in the text field while waiting" Margin="0,12,0,0" />
+                            <TextBlock Text="Your request is swapped for animated dots, and put back if you cancel or something goes wrong." Opacity="0.7" TextWrapping="Wrap" Margin="24,2,0,0" />
+
+                            <TextBlock Text="Typing speed" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,4" />
+                            <TextBlock Text="Pause between typed keys. Lower is faster; some apps mix up characters if it's too low." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <DockPanel>
+                                <TextBlock x:Name="SpeedText" DockPanel.Dock="Right" Width="64" TextAlignment="Right" VerticalAlignment="Center" />
+                                <Slider x:Name="SpeedSlider" Minimum="1" Maximum="25" TickFrequency="1" IsSnapToTickEnabled="True" />
+                            </DockPanel>
+                            <TextBlock Text="Slower for these apps (they drop fast typing):" Margin="0,12,0,4" />
+                            <DockPanel>
+                                <TextBlock x:Name="SlowSpeedText" DockPanel.Dock="Right" Width="64" TextAlignment="Right" VerticalAlignment="Center" />
+                                <Slider x:Name="SlowSpeedSlider" Minimum="10" Maximum="80" TickFrequency="5" IsSnapToTickEnabled="True" />
+                            </DockPanel>
+                            <local:AppListEditor x:Name="SlowApps" Margin="0,6,0,0" />
+
+                            <TextBlock Text="Line breaks" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,8" />
+                            <CheckBox x:Name="SingleLineCheck" Content="Keep answers to one line" />
+                            <TextBlock Text="Recommended: in a terminal, a line break in the answer would run the command." Opacity="0.7" TextWrapping="Wrap" Margin="24,2,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="Privacy &amp; safety">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="4,12,12,8">
+                            <TextBlock Text="Risky commands" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+                            <CheckBox x:Name="RiskCheck" Content="Ask before typing an answer that could delete or break things" />
+                            <TextBlock Text="Commands like rm -rf, find … -delete, DROP TABLE, git reset --hard or Remove-Item -Recurse are shown first; press Enter to type it or Esc to put your request back. Inkling never runs anything itself." Opacity="0.7" TextWrapping="Wrap" Margin="24,2,0,0" />
+
+                            <TextBlock Text="Apps where Inkling stays off" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,4" />
+                            <TextBlock Text="Inkling's shortcuts do nothing in these apps and go to the app as normal. Good for password managers, games and remote desktops." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <local:AppListEditor x:Name="DisabledApps" />
+
+                            <TextBlock Text="What's sent" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,8" />
+                            <CheckBox x:Name="TitleCheck" Content="Include the window title" />
+                            <TextBlock Opacity="0.7" TextWrapping="Wrap" Margin="24,2,0,0"
+                                       Text="It tells the model the current folder in a terminal or the file name in an editor, so answers fit better. It can also contain private text, like an email subject." />
+                            <TextBlock Opacity="0.7" TextWrapping="Wrap" Margin="0,12,0,0"
+                                       Text="Each request sends your request (or selected text), the app's name, the answer length and, if on, the window title, to the model you picked. Inkling's log holds only timings and errors, never what you typed or the answer. Select-to-ask copies the selection with Ctrl+C and puts your clipboard back afterwards; the copy may still appear in Windows clipboard history (Win+V)." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem Header="About">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="4,12,12,8">
+                            <TextBlock Text="Welcome guide" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="The short guide shown the first time Inkling started." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <Button Content="Show the welcome guide" Click="Welcome_Click" HorizontalAlignment="Left" />
+
+                            <TextBlock Text="Diagnostics" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,4" />
+                            <TextBlock Text="Where the time of each recent request went (no prompts or answers), and the log of timings and errors." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <WrapPanel>
+                                <Button Content="Request timings" Click="Timings_Click" Margin="0,0,8,0" />
+                                <Button Content="Open log" Click="OpenLog_Click" Margin="0,0,8,0" />
+                                <Button Content="Copy diagnostics" Click="CopyDiagnostics_Click" Margin="0,0,8,0" />
+                                <TextBlock x:Name="CopiedText" Text="Copied." VerticalAlignment="Center" Opacity="0.7" Visibility="Collapsed" />
+                            </WrapPanel>
+
+                            <TextBlock Text="Advanced" FontSize="16" FontWeight="SemiBold" Margin="0,24,0,4" />
+                            <TextBlock Text="config.json also holds the prompt, the example answers the model copies, and per-app answer hints. Edit it, then come back here: changes are picked up when this window opens." Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <WrapPanel>
+                                <Button Content="Open config.json" Click="OpenConfig_Click" Margin="0,0,8,0" />
+                                <Button Content="Open settings folder" Click="OpenFolder_Click" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Grid>
+</Window>

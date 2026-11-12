@@ -31,6 +31,21 @@ internal static class InputSender
     /// </summary>
     public static void SendMaskKey() => Send([Key(VK_MASK, 0, 0), Key(VK_MASK, 0, KEYEVENTF_KEYUP)]);
 
+    /// <summary>Ctrl+key as one atomic batch (nothing the user types can land in between).</summary>
+    public static void SendCtrlKey(ushort vk)
+    {
+        ushort ctrlScan = (ushort)MapVirtualKeyEx(VK_CONTROL, MAPVK_VK_TO_VSC, 0);
+        ushort scan = (ushort)MapVirtualKeyEx(vk, MAPVK_VK_TO_VSC, 0);
+        Send([Key(VK_CONTROL, ctrlScan, 0), Key(vk, scan, 0), Key(vk, scan, KEYEVENTF_KEYUP), Key(VK_CONTROL, ctrlScan, KEYEVENTF_KEYUP)]);
+    }
+
+    /// <summary>The text exactly as <see cref="TypeTextAsync"/> puts it on screen.</summary>
+    public static string AsTyped(string text, bool newlinesAsEnter)
+    {
+        var s = text.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\t', ' ');
+        return newlinesAsEnter ? s : s.Replace("\n", "");
+    }
+
     /// <summary>Paced backspaces (some apps drop keys sent in a burst).</summary>
     public static async Task BackspaceAsync(int count, int delayMs)
     {
@@ -74,11 +89,10 @@ internal static class InputSender
         timeBeginPeriod(1); // make Task.Delay(5) ≈ 5 ms instead of 15.6 ms
         try
         {
-            var chars = text.Replace("\r\n", "\n").Replace('\t', ' ');
+            var chars = AsTyped(text, newlinesAsEnter);
             for (int i = 0; i < chars.Length; i++)
             {
                 char ch = chars[i];
-                if (ch == '\r' || (ch == '\n' && !newlinesAsEnter)) continue;
 
                 ushort vk = VK_RETURN;
                 bool shift = false;

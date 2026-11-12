@@ -8,6 +8,10 @@ public static partial class OutputCleaner
     public static string Clean(string raw, bool singleLine)
     {
         var text = raw.Replace("\r\n", "\n").Trim();
+        // Reasoning models put their thinking in <think>...</think> before the answer.
+        var thinkEnd = text.LastIndexOf("</think>", StringComparison.Ordinal);
+        if (thinkEnd >= 0) text = text[(thinkEnd + 8)..].Trim();
+        else if (text.StartsWith("<think>", StringComparison.Ordinal)) return "";
 
         // Prefer the inside of a ``` fenced block if there is one.
         var fence = FenceRegex().Match(text);

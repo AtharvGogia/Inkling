@@ -1,0 +1,70 @@
+{
+  "_about": "Inkling benchmark. Each question is asked as if typed in the given app (process + window title pick the answer-type hint, as in real use). An answer is correct when it matches ANY 'expect' regex and ALL 'require' regexes (case-insensitive). 'maxChars' flags rambling answers.",
+  "apps": {
+    "bash":       { "app": "Windows Terminal", "process": "WindowsTerminal", "title": "atharv@PC: ~/projects/inkling" },
+    "powershell": { "app": "Windows Terminal", "process": "WindowsTerminal", "title": "Windows PowerShell" },
+    "python":     { "app": "Visual Studio Code", "process": "Code", "title": "utils.py - inkling - Visual Studio Code" },
+    "js":         { "app": "Visual Studio Code", "process": "Code", "title": "app.js - web - Visual Studio Code" },
+    "sql":        { "app": "Visual Studio Code", "process": "Code", "title": "queries.sql - shop - Visual Studio Code" },
+    "ts":         { "app": "Visual Studio Code", "process": "Code", "title": "validate.ts - web - Visual Studio Code" },
+    "excel":      { "app": "Microsoft Excel", "process": "EXCEL", "title": "Budget.xlsx - Excel" },
+    "notepad":    { "app": "Notepad", "process": "Notepad", "title": "notes.txt - Notepad" }
+  },
+  "questions": [
+    { "domain": "Bash", "in": "bash", "q": "find files over 100mb in home", "expect": ["find\\s+(~|\\$HOME|/home)\\S*.*-size\\s+\\+100M"] },
+    { "domain": "Bash", "in": "bash", "q": "count lines in all python files in this folder", "expect": ["wc\\s+-l.*\\.py|\\.py.*wc\\s+-l"] },
+    { "domain": "Bash", "in": "bash", "q": "which process is using port 8080", "expect": ["lsof\\s+-i\\s*:?\\s*8080|ss\\s+-\\w+.*8080|netstat.*8080|fuser\\s+8080"] },
+    { "domain": "Bash", "in": "bash", "q": "extract archive.tar.gz", "expect": ["tar\\s+-?\\w*x\\w*\\s+(-f\\s+)?archive\\.tar\\.gz"] },
+    { "domain": "Bash", "in": "bash", "q": "make deploy.sh executable", "expect": ["chmod\\s+(\\+x|u\\+x|a\\+x|7[0-7]{2})\\s+(\\./)?deploy\\.sh"] },
+    { "domain": "Bash", "in": "bash", "q": "show free disk space on all drives", "expect": ["\\bdf\\b"] },
+
+    { "domain": "PowerShell", "in": "powershell", "q": "list the 5 largest files in this folder", "require": ["Get-ChildItem|\\bgci\\b|\\bls\\b|\\bdir\\b", "Sort-Object|\\bsort\\b", "Length", "-First\\s+5|-f\\s+5"] },
+    { "domain": "PowerShell", "in": "powershell", "q": "restart the print spooler service", "expect": ["Restart-Service\\s+(-Name\\s+)?['\"]?Spooler"] },
+    { "domain": "PowerShell", "in": "powershell", "q": "show the last 20 lines of log.txt", "expect": ["Get-Content\\s+.*log\\.txt.*-Tail\\s+20|gc\\s+.*log\\.txt.*-Tail\\s+20|-Tail\\s+20.*log\\.txt"] },
+
+    { "domain": "Git", "in": "bash", "q": "undo the last commit but keep the changes", "expect": ["git\\s+reset\\s+(--soft\\s+|--mixed\\s+)?HEAD(~1?|\\^)"] },
+    { "domain": "Git", "in": "bash", "q": "rename current branch to main", "expect": ["git\\s+branch\\s+-[mM]\\s+main"] },
+    { "domain": "Git", "in": "bash", "q": "show last 5 commits one line each", "require": ["git\\s+log", "--oneline|--pretty=oneline|--format", "-5\\b|-n\\s*5|--max-count=5"] },
+
+    { "domain": "Docker", "in": "bash", "q": "list all containers including stopped ones", "expect": ["docker\\s+(ps\\s+(-a|--all)|container\\s+ls\\s+(-a|--all))"] },
+    { "domain": "Docker", "in": "bash", "q": "remove all unused images", "expect": ["docker\\s+image\\s+prune\\s+(-a|--all)|docker\\s+system\\s+prune\\s+(-a|--all)|docker\\s+image\\s+prune"] },
+
+    { "domain": "Python", "in": "python", "q": "reverse a string s", "expect": ["s\\[::-1\\]|['\"]{2}\\.join\\(reversed\\(s\\)\\)"] },
+    { "domain": "Python", "in": "python", "q": "read data.csv into a pandas dataframe", "expect": ["pd\\.read_csv\\(\\s*['\"]data\\.csv"] },
+    { "domain": "Python", "in": "python", "q": "today's date as a YYYY-MM-DD string", "expect": ["strftime\\(\\s*['\"]%Y-%m-%d|\\.isoformat\\(\\)|str\\(\\s*(datetime\\.)?date\\.today\\(\\)\\s*\\)"] },
+
+    { "domain": "JavaScript", "in": "js", "q": "remove duplicates from array arr", "expect": ["new\\s+Set\\(\\s*arr\\s*\\)|arr\\.filter\\("] },
+    { "domain": "JavaScript", "in": "js", "q": "wait 2 seconds using a promise", "expect": ["setTimeout\\(.*2000"] },
+
+    { "domain": "SQL", "in": "sql", "q": "count users per country from the users table", "require": ["SELECT", "COUNT\\(", "FROM\\s+users", "GROUP\\s+BY\\s+country"] },
+    { "domain": "SQL", "in": "sql", "q": "delete orders placed before 2020", "require": ["DELETE\\s+FROM\\s+orders", "WHERE", "2020"] },
+
+    { "domain": "Regex", "in": "ts", "q": "regex for a 5 digit us zip code", "expect": ["\\\\d\\{5\\}|\\[0-9\\]\\{5\\}"] },
+
+    { "domain": "Excel", "in": "excel", "q": "sum of A1 to A10", "expect": ["=\\s*SUM\\(\\s*A1\\s*:\\s*A10\\s*\\)"] },
+    { "domain": "Excel", "in": "excel", "q": "average of column B rows 2 to 50", "expect": ["=\\s*AVERAGE\\(\\s*B2\\s*:\\s*B50\\s*\\)"] },
+
+    { "domain": "Facts", "in": "notepad", "q": "capital of canada", "expect": ["Ottawa"] },
+    { "domain": "Facts", "in": "notepad", "q": "who wrote pride and prejudice", "expect": ["Jane\\s+Austen"] },
+    { "domain": "Facts", "in": "notepad", "q": "chemical symbol for gold", "expect": ["\\bAu\\b"] },
+    { "domain": "Facts", "in": "notepad", "q": "year the berlin wall fell", "expect": ["1989"] },
+    { "domain": "Facts", "in": "notepad", "q": "largest planet in the solar system", "expect": ["Jupiter"] },
+    { "domain": "Facts", "in": "notepad", "q": "speed of light in km/s", "expect": ["299[ ,.]?792|300[ ,.]?000|3\\s*[x×*]\\s*10\\^?5"] },
+
+    { "domain": "Math", "in": "notepad", "q": "15% of 240", "expect": ["(^|[^\\d.])36(\\.0+)?($|[^\\d])"] },
+    { "domain": "Math", "in": "notepad", "q": "17 times 23", "expect": ["\\b391\\b"] },
+    { "domain": "Math", "in": "notepad", "q": "square root of 1764", "expect": ["\\b42\\b"] },
+
+    { "domain": "Units", "in": "notepad", "q": "100 fahrenheit in celsius", "expect": ["37\\.7|37\\.8|\\b38\\b"] },
+    { "domain": "Units", "in": "notepad", "q": "5 miles in km", "expect": ["\\b8\\.0\\d*"] },
+    { "domain": "Units", "in": "notepad", "q": "how many seconds in a day", "expect": ["86[ ,.]?400"] },
+
+    { "domain": "Translation", "in": "notepad", "q": "good morning in spanish", "expect": ["buen[oa]s\\s+d[ií]as"] },
+    { "domain": "Translation", "in": "notepad", "q": "thank you very much in french", "expect": ["merci\\s+beaucoup"] },
+    { "domain": "Translation", "in": "notepad", "q": "where is the train station in german", "expect": ["wo\\s+ist\\s+der\\s+bahnhof"] },
+
+    { "domain": "Language", "in": "notepad", "q": "fix the grammar: she dont like apples", "expect": ["she\\s+(doesn['’]?t|does\\s+not)\\s+like\\s+apples"] },
+    { "domain": "Language", "in": "notepad", "q": "correct spelling of definately", "expect": ["\\bdefinitely\\b"] },
+    { "domain": "Language", "in": "notepad", "q": "plural of mouse", "expect": ["\\bmice\\b"] }
+  ]
+}

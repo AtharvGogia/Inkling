@@ -49,8 +49,12 @@ internal static class ForegroundContext
     public static string Describe(nint hwnd, AppConfig cfg)
     {
         var process = ProcessName(hwnd);
-        var title = GetWindowTitle(hwnd).Trim();
-        var app = FriendlyName(hwnd, process);
+        return Compose(FriendlyName(hwnd, process), process, GetWindowTitle(hwnd).Trim(), cfg);
+    }
+
+    /// <summary>The context block for a given app, process and window title (also used by --bench).</summary>
+    public static string Compose(string app, string process, string title, AppConfig cfg)
+    {
         var hint = HintFor(process, title, cfg);
 
         var where = process.Length > 0 ? $"{app} ({process}.exe)" : "an unknown application";
