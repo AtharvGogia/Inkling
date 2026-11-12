@@ -132,6 +132,7 @@ public sealed class AppConfig
         new() { Process = "powershell", Hint = "a single PowerShell command for Windows" },
         new() { Process = "cmd", Hint = "a single cmd.exe command for Windows" },
         new() { Process = "Code", Hint = "a short code snippet or command" },
+        new() { Process = "EXCEL", Hint = "a spreadsheet formula starting with = (or a short value)" },
     ];
 
     [JsonIgnore]
@@ -152,6 +153,10 @@ public sealed class AppConfig
                 var text = File.ReadAllText(FilePath);
                 var loaded = JsonSerializer.Deserialize<AppConfig>(text, Json) ?? new AppConfig();
                 if (loaded.SystemPrompt == OldSystemPrompt) loaded.SystemPrompt = DefaultSystemPrompt;
+                // Per-app hints added in later versions, for configs saved before they existed.
+                foreach (var rule in new AppConfig().Contexts)
+                    if (!loaded.Contexts.Any(c => c.Process.Equals(rule.Process, StringComparison.OrdinalIgnoreCase)))
+                        loaded.Contexts.Add(rule);
                 loaded.AnswerLength = Ai.Prompt.NormalizeLength(loaded.AnswerLength);
                 // Add settings introduced by newer versions to the file, so they're visible when editing it.
                 if (JsonSerializer.Serialize(loaded, Json) != text) loaded.Save();

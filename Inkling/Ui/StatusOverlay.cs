@@ -5,20 +5,24 @@ using static Inkling.Native;
 
 namespace Inkling.Ui;
 
+/// <summary>Icon = the small "i_rdy" badge in the screen's top-right corner (config value "icon"); Bar = text bar by the cursor.</summary>
 public enum IndicatorStyle { Icon, Bar }
 
 /// <summary>
-/// Shows capture state near the caret, either as a small animated Inkling mark (default) or as a
-/// text bar with instructions. Neither window takes focus or receives clicks.
+/// Shows capture state: the small "i_rdy" badge in the screen's top-right corner (default), or a text bar with
+/// instructions near the caret. Neither window takes focus or receives clicks.
 /// </summary>
 internal sealed class StatusOverlay : IDisposable
 {
-    private readonly IconIndicator _icon = new();
+    private readonly BadgeIndicator _icon = new();
     private readonly BarIndicator _bar = new();
 
     public IndicatorStyle Style { get; set; } = IndicatorStyle.Icon;
 
-    /// <summary>Raised for result/error messages in icon mode, which has no room for text (tray shows a balloon).</summary>
+    /// <summary>Black badge for a dark theme, white for a light one.</summary>
+    public bool Dark { get => _icon.Dark; set => _icon.Dark = value; }
+
+    /// <summary>Raised for result/error messages in badge mode, which has no room for text (tray shows a balloon).</summary>
     public event Action<string, bool>? Message;
 
     public StatusOverlay()
@@ -35,13 +39,13 @@ internal sealed class StatusOverlay : IDisposable
         if (Style == IndicatorStyle.Bar)
             _bar.Display(target, chars == 0 ? "Inkling ▸ type your request · Enter = ask · Esc = cancel" : $"Inkling ▸ {chars} chars · Enter = ask · Esc = cancel",
                 InklingArt.Accent, 0);
-        else if (chars == 0 || !_icon.Visible) _icon.Start(target, IconIndicator.Mode.Listening);
+        else if (chars == 0 || !_icon.Visible) _icon.Start(target, BadgeIndicator.Mode.Ready);
     }
 
     public void ShowThinking(nint target, string backend)
     {
         if (Style == IndicatorStyle.Bar) _bar.Display(target, $"Inkling ▸ asking {backend}… (Esc = cancel)", InklingArt.Amber, 0);
-        else _icon.Start(target, IconIndicator.Mode.Thinking);
+        else _icon.Start(target, BadgeIndicator.Mode.Thinking);
     }
 
     public void ShowMessage(nint target, string text, bool isError, int autoHideMs)
@@ -51,9 +55,12 @@ internal sealed class StatusOverlay : IDisposable
             _bar.Display(target, "Inkling ▸ " + text, isError ? InklingArt.Red : InklingArt.Green, autoHideMs);
             return;
         }
-        _icon.Start(target, isError ? IconIndicator.Mode.Error : IconIndicator.Mode.Done);
-        // Short cancel notices don't need a balloon; errors and "copied to clipboard" do.
-        if (isError || text.Contains("clipboard", StringComparison.OrdinalIgnoreCase)) Message?.Invoke(text, isError);
+        // Success needs no badge (the answer is the signal); an error shows "i_err" briefly.
+        if (isError) _icon.Start(target, BadgeIndicator.Mode.Error);
+        else _icon.Stop();
+        // The badge has no room for text: anything worth reading goes to a tray notification. Routine
+        // "Cancelled (...)" and "Not typed" notices don't.
+        if (isError || !(text.StartsWith("Cancelled", StringComparison.Ordinal) || text == "Not typed")) Message?.Invoke(text, isError);
     }
 
     /// <summary>A question that needs an answer (risky command): always the text bar, whatever the style, until hidden.</summary>
@@ -112,17 +119,26 @@ internal sealed class StatusOverlay : IDisposable
     internal const uint SWP_NOACTIVATE = 0x0010, SWP_SHOWWINDOW = 0x0040;
 }
 
-/// <summary>Small pill in the screen's top-left corner: the Inkling mark, plus ". . ." while thinking. Per-pixel alpha (UpdateLayeredWindow).</summary>
-internal sealed class IconIndicator : Form
+/// <summary>
+/// A small "i_rdy" badge in the top-right corner of the screen, in a terminal font and Inkling's orange, on
+/// black or white to match the theme. "i_rdy" (cursor blinking) while you type, "i_..." while thinking,
+/// "i_err" in red on an error. Per-pixel alpha (UpdateLayeredWindow); never takes focus or clicks.
+/// </summary>
+internal sealed class BadgeIndicator : Form
 {
-    public enum Mode { Listening, Thinking, Done, Error }
+    public enum Mode { Ready, Thinking, Error }
 
-    private readonly System.Windows.Forms.Timer _timer = new() { Interval = 33 };
+    private readonly System.Windows.Forms.Timer _timer = new() { Interval = 100 };
     private Mode _mode;
     private long _startTick;
-    private int _size;
+    private Size _size;
+    private float _scale = 1f;
 
-    public IconIndicator()
+    /// <summary>Black badge (dark theme) or white (light).</summary>
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public bool Dark { get; set; } = true;
+
+    public BadgeIndicator()
     {
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
@@ -143,24 +159,37 @@ internal sealed class IconIndicator : Form
         }
     }
 
-    private int _width;
+    /// <summary>Cascadia Mono (Windows Terminal's font) if installed, else Consolas.</summary>
+    internal static Font MonoFont(float px)
+    {
+        foreach (var name in new[] { "Cascadia Mono", "Cascadia Code", "Consolas" })
+        {
+            var f = new Font(name, px, FontStyle.Bold, GraphicsUnit.Pixel);
+            if (f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) return f;
+            f.Dispose();
+        }
+        return new Font(FontFamily.GenericMonospace, px, FontStyle.Bold, GraphicsUnit.Pixel);
+    }
 
-    /// <summary>Shows the indicator in the top-left corner of the screen the target window is on.</summary>
+    /// <summary>Shows the badge in the top-right corner of the screen the target window is on.</summary>
     public void Start(nint target, Mode mode)
     {
         _mode = mode;
         _startTick = Environment.TickCount64;
         var screen = target != 0 ? Screen.FromHandle(target) : Screen.PrimaryScreen!;
-        // Scale for the monitor the indicator sits on (DeviceDpi is the form's current monitor).
-        double dpi = DeviceDpi / 96.0;
-        _size = (int)Math.Round(22 * dpi);          // height of the pill
-        _width = _size;                              // just the round light
-        int margin = (int)Math.Round(8 * dpi);
-        var p = new Point(screen.WorkingArea.Left + margin, screen.WorkingArea.Top + margin);
-        Bounds = new Rectangle(p, new Size(_width, _size));
+        _scale = DeviceDpi / 96f;
+        // Five monospace characters in every state, so the badge never changes size.
+        using (var font = MonoFont(12f * _scale))
+        {
+            var text = TextRenderer.MeasureText("i_rdy", font, Size.Empty, TextFormatFlags.NoPadding);
+            _size = new Size(text.Width + (int)Math.Round(14 * _scale), text.Height + (int)Math.Round(6 * _scale));
+        }
+        int margin = (int)Math.Round(8 * _scale);
+        var p = new Point(screen.WorkingArea.Right - margin - _size.Width, screen.WorkingArea.Top + margin);
+        Bounds = new Rectangle(p, _size);
         Render();
         if (!Visible) Show();
-        StatusOverlay.SetWindowPos(Handle, -1, p.X, p.Y, _width, _size, StatusOverlay.SWP_NOACTIVATE | StatusOverlay.SWP_SHOWWINDOW);
+        StatusOverlay.SetWindowPos(Handle, -1, p.X, p.Y, _size.Width, _size.Height, StatusOverlay.SWP_NOACTIVATE | StatusOverlay.SWP_SHOWWINDOW);
         _timer.Start();
     }
 
@@ -170,75 +199,55 @@ internal sealed class IconIndicator : Form
         if (Visible) Hide();
     }
 
+    /// <summary>The badge text for a state at time <paramref name="t"/> (seconds); null when it should hide.</summary>
+    internal static string? TextAt(Mode mode, double t) => mode switch
+    {
+        Mode.Ready => (int)(t / 0.53) % 2 == 0 ? "i_rdy" : "i rdy",            // the underscore blinks like a cursor
+        Mode.Thinking => "i_" + new string('.', 1 + (int)(t / 0.3) % 3).PadRight(3),
+        _ => t > 2.0 ? null : "i_err",
+    };
+
+    /// <summary>Draws the badge into a bitmap of <paramref name="size"/> (also used for the README GIFs).</summary>
+    internal static void DrawBadge(Graphics g, Size size, float scale, string text, Color color, bool dark)
+    {
+        g.Clear(Color.Transparent);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        float r = 4f * scale;
+        using (var shape = RoundRect(0.5f, 0.5f, size.Width - 1.5f, size.Height - 1.5f, r))
+        {
+            using var bg = new SolidBrush(dark ? Color.FromArgb(240, 12, 12, 12) : Color.FromArgb(245, 255, 255, 255));
+            g.FillPath(bg, shape);
+            using var edge = new Pen(dark ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(60, 0, 0, 0), Math.Max(1f, scale * 0.75f));
+            g.DrawPath(edge, shape);
+        }
+        using var font = MonoFont(12f * scale);
+        using var brush = new SolidBrush(color);
+        // Count trailing spaces ("i_.  ") so the text never shifts as the dots grow.
+        var fmt = new StringFormat(StringFormatFlags.MeasureTrailingSpaces) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.DrawString(text, font, brush, new RectangleF(0, 0, size.Width, size.Height), fmt);
+    }
+
     private void Render()
     {
+        if (_size.IsEmpty) return;
         double t = (Environment.TickCount64 - _startTick) / 1000.0;
-        int s = _size;
-        float scale = 1f;
-        int alpha = 255;
-        Color color;
-        string dots = "";
-
-        switch (_mode)
-        {
-            case Mode.Listening: // active: gentle breathing
-                color = InklingArt.Accent;
-                double b = (Math.Sin(t * Math.PI * 2 / 1.4) + 1) / 2;
-                scale = 0.88f + 0.12f * (float)b;
-                alpha = 190 + (int)(65 * b);
-                break;
-            case Mode.Thinking: // yellow, quick pulse (the ". . ." animation runs in the text field itself)
-                color = InklingArt.Amber;
-                double q = (Math.Sin(t * Math.PI * 2 / 0.45) + 1) / 2;
-                alpha = 150 + (int)(105 * q);
-                break;
-            case Mode.Done: // green, then fade out
-                color = InklingArt.Green;
-                if (t > 0.9) { Stop(); return; }
-                alpha = t < 0.5 ? 255 : (int)(255 * (1 - (t - 0.5) / 0.4));
-                break;
-            default: // Error: three red blinks
-                color = InklingArt.Red;
-                if (t > 1.5) { Stop(); return; }
-                alpha = ((int)(t / 0.25) % 2 == 0) ? 255 : 60;
-                break;
-        }
-
-        using var bmp = new Bitmap(_width, s, PixelFormat.Format32bppArgb);
+        var text = TextAt(_mode, t);
+        if (text == null) { Stop(); return; }
+        using var bmp = new Bitmap(_size.Width, _size.Height, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bmp))
-        {
-            g.Clear(Color.Transparent);
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-
-            // Dark pill behind the icon (and the dots), so it reads on any wallpaper.
-            float pillW = dots.Length == 0 ? s : _width;
-            using (var pill = RoundedPill(0, 0, pillW - 1, s - 1))
-            using (var bg = new SolidBrush(Color.FromArgb(Math.Min(alpha, 215), 24, 24, 28)))
-                g.FillPath(bg, pill);
-
-            float pad = s * 0.12f;
-            float d = (s - 2 * pad) * scale;
-            InklingArt.DrawMark(g, new RectangleF((s - d) / 2f, (s - d) / 2f, d, d), color, 1f, alpha);
-
-            if (dots.Length > 0)
-            {
-                using var font = new Font("Segoe UI", s * 0.55f, FontStyle.Bold, GraphicsUnit.Pixel);
-                using var brush = new SolidBrush(Color.FromArgb(235, 255, 255, 255));
-                var fmt = new StringFormat { LineAlignment = StringAlignment.Center };
-                g.DrawString(dots, font, brush, new RectangleF(s + s * 0.05f, -s * 0.12f, _width - s, s), fmt);
-            }
-        }
+            DrawBadge(g, _size, _scale, text, _mode == Mode.Error ? InklingArt.Red : InklingArt.Accent, Dark);
         Push(bmp);
     }
 
-    private static GraphicsPath RoundedPill(float x, float y, float w, float h)
+    private static GraphicsPath RoundRect(float x, float y, float w, float h, float r)
     {
         var p = new GraphicsPath();
-        float r = h;
-        if (w <= h) { p.AddEllipse(x, y, h, h); return p; }
-        p.AddArc(x, y, r, r, 90, 180);
-        p.AddArc(x + w - r, y, r, r, 270, 180);
+        float d = r * 2;
+        p.AddArc(x, y, d, d, 180, 90);
+        p.AddArc(x + w - d, y, d, d, 270, 90);
+        p.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+        p.AddArc(x, y + h - d, d, d, 90, 90);
         p.CloseFigure();
         return p;
     }

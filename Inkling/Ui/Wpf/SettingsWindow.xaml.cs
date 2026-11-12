@@ -50,8 +50,8 @@ internal sealed partial class SettingsWindow : Window
         SelectionHotkey.Changed += v => HotkeyChanged(SelectionHotkey, SelectionProblem, v, (c, x) => c.SelectionHotkey = x, c => c.SelectionHotkey);
         RetryHotkey.Changed += v => HotkeyChanged(RetryHotkey, RetryProblem, v, (c, x) => c.RetryHotkey = x, c => c.RetryHotkey);
         // Backspace/Esc end a recording without raising Changed; turning one off must still be saved.
-        SelectionHotkey.LostKeyboardFocus += (_, _) => { if (SelectionHotkey.Value.Length == 0 && _cfg.SelectionHotkey.Length > 0) { _cfg.SelectionHotkey = ""; Commit(); } };
-        RetryHotkey.LostKeyboardFocus += (_, _) => { if (RetryHotkey.Value.Length == 0 && _cfg.RetryHotkey.Length > 0) { _cfg.RetryHotkey = ""; Commit(); } };
+        SelectionHotkey.LostKeyboardFocus += (_, _) => { if (SelectionHotkey.Value.Length == 0 && _host.Config.SelectionHotkey.Length > 0) Set(c => c.SelectionHotkey = ""); };
+        RetryHotkey.LostKeyboardFocus += (_, _) => { if (RetryHotkey.Value.Length == 0 && _host.Config.RetryHotkey.Length > 0) Set(c => c.RetryHotkey = ""); };
 
         foreach (var (rb, len) in new[] { (LengthShort, "short"), (LengthSentence, "sentence"), (LengthParagraph, "paragraph") })
             rb.Checked += (_, _) => Set(c => c.AnswerLength = len);
@@ -121,11 +121,23 @@ internal sealed partial class SettingsWindow : Window
         RefreshStatus();
     }
 
+    /// <summary>
+    /// Applies one change on top of the app's current config, not this window's copy: the tray menu, the update
+    /// check or a skipped version may have changed something since the window opened, and must not be undone.
+    /// </summary>
     private void Set(Action<AppConfig> change)
     {
         if (_loading) return;
+        _cfg = _host.Config.Clone();
         change(_cfg);
         Commit();
+    }
+
+    /// <summary>Something outside this window changed the config (tray menu): show it.</summary>
+    public void Reload()
+    {
+        _cfg = _host.Config.Clone();
+        LoadFromConfig();
     }
 
     private void Commit()
@@ -151,6 +163,7 @@ internal sealed partial class SettingsWindow : Window
 
     private void HotkeyChanged(HotkeyBox box, WpfTextBlock problem, string value, Action<AppConfig, string> set, Func<AppConfig, string> get)
     {
+        _cfg = _host.Config.Clone();
         string? blocking = null, warning = null;
         try
         {
@@ -281,6 +294,7 @@ internal sealed partial class SettingsWindow : Window
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
+        _cfg = _host.Config.Clone();
         var d = new AppConfig();
         // Only what this window shows; app lists, the prompt, examples and paths stay as they are.
         _cfg.Hotkey = d.Hotkey; _cfg.SelectionHotkey = d.SelectionHotkey; _cfg.RetryHotkey = d.RetryHotkey;

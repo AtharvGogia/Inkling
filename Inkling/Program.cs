@@ -13,7 +13,7 @@ internal static class Program
     {
         // Developer check without the hotkey:  Inkling.exe --ask claude|agy "request" ["hint"]
         if (args.Length >= 3 && args[0] == "--ask") return AskFromCommandLine(args);
-        // Benchmark:  Inkling.exe --bench model1 [model2 ...]   (see Bench.cs)
+        // Dev options (README "Build and run"): all handled here, before the single-instance check.
         if (args.Length >= 2 && args[0] == "--render-ui") { AttachConsole(-1); return Ui.Wpf.UiSnapshots.Run(args[1], args.Length > 2 ? args[2] : null); }
         if (args.Length >= 2 && args[0] == "--render-media") { AttachConsole(-1); return Ui.Wpf.ReadmeMedia.Render(args[1]); }
         if (args.Length >= 1 && args[0] == "--check-update")
@@ -35,6 +35,25 @@ internal static class Program
         {
             Ui.InklingArt.WriteIco(args[1], 16, 20, 24, 32, 40, 48, 64, 256);
             return 0;
+        }
+        // Anything else on the command line is a mistake (a typo, or missing arguments): say so instead of starting the app.
+        if (args.Length > 0)
+        {
+            AttachConsole(-1);
+            Console.WriteLine($"Unknown or incomplete option: {string.Join(' ', args)}");
+            Console.WriteLine("""
+                Options:
+                  --ask nim|claude|agy "request" ["hint"]   ask three times, with timings
+                  --bench model1 [model2 ...]                run the benchmark (bench/questions.json)
+                  --risk-test                                check the risky-command rules
+                  --check-update                             ask GitHub for the latest release
+                  --render-ui <folder> [light|dark]          pictures of the Settings tabs and welcome window
+                  --render-media <folder>                    render the README GIFs (needs FFmpeg)
+                  --write-icon <file.ico>                    write the app icon
+                  --write-logo-svg <folder>                  write the README logo SVGs
+                Run without options to start Inkling.
+                """);
+            return 2;
         }
 
         using var mutex = new Mutex(true, "Inkling-single-instance", out bool first);

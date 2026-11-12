@@ -18,8 +18,9 @@ internal sealed record Hotkey(Keys Key, bool Ctrl, bool Alt, bool Shift, bool Wi
                 case "shift": shift = true; break;
                 case "win" or "windows": win = true; break;
                 default:
-                    if (Enum.TryParse<Keys>(raw, ignoreCase: true, out var k)) key = k;
-                    else if (raw.Length == 1 && char.IsDigit(raw[0])) key = Keys.D0 + (raw[0] - '0');
+                    // Digits first: Enum.TryParse would read "5" as key code 5 (a mouse button), not the 5 key.
+                    if (raw.Length == 1 && char.IsDigit(raw[0])) key = Keys.D0 + (raw[0] - '0');
+                    else if (!raw.All(char.IsDigit) && Enum.TryParse<Keys>(raw, ignoreCase: true, out var k)) key = k;
                     else throw new FormatException($"Unknown key '{raw}' in hotkey '{text}'.");
                     break;
             }

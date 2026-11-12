@@ -11,8 +11,8 @@ public static class Prompt
     public static string LengthLabel(string length) => NormalizeLength(length) switch
     {
         "sentence" => "A sentence or two",
-        "paragraph" => "A short paragraph",
-        _ => "One word / one command",
+        "paragraph" => "A paragraph",
+        _ => "Short: a word or a command",
     };
 
     private static string LengthInstruction(AppConfig cfg) => NormalizeLength(cfg.AnswerLength) switch

@@ -85,7 +85,7 @@ internal static class Updates
         Process.Start(new ProcessStartInfo(path, "/SILENT /SUPPRESSMSGBOXES /NORESTART") { UseShellExecute = true });
     }
 
-    private static Version? Parse(string s)
+    internal static Version? Parse(string s)
     {
         s = s.Trim().TrimStart('v', 'V');
         var plus = s.IndexOfAny(['+', '-']);

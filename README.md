@@ -19,11 +19,13 @@ Made by **Atharv Gogia**. Open source under the [MIT licence](LICENSE). It's a o
 
 ## Download
 
-Get `Inkling-Setup-x.y.z.exe` from the [Releases page](https://github.com/AtharvGogia/Inkling/releases) and run it. It installs for your user only (no admin prompt) and includes everything it needs. Windows 10 (1809 or later) or Windows 11, 64-bit.
+Get `Inkling-Setup-x.y.z.exe` from the [Releases page](https://github.com/AtharvGogia/Inkling/releases) and run it. It installs for your user only (no admin prompt) and includes everything it needs. Windows 11, 64-bit. It should also run on Windows 10 (1809 or later), but it hasn't been tested there, and its windows are designed for Windows 11.
 
 The installer isn't code-signed, so Windows SmartScreen may say "Windows protected your PC" the first time: choose **More info → Run anyway**.
 
 Inkling answers with NVIDIA's free API, so you'll need a free key from [build.nvidia.com](https://build.nvidia.com/). The welcome window that opens on first start asks for it, checks that it works, and keeps it in Windows Credential Manager.
+
+<img src="docs/media/welcome.png" width="480" alt="The welcome window: how it works, the NVIDIA API key, and start with Windows">
 
 Inkling checks GitHub for a new version once a day and offers it with a one-click update. You can also click the tray icon → **Help → Check for updates…**.
 
@@ -31,7 +33,7 @@ Inkling checks GitHub for a new version once a day and offers it with a one-clic
 
 ### Ask
 
-Press **Ctrl+Alt+Space**, type your request, press **Enter**. While it thinks, your text becomes a quick `...` and a small light in the top-left corner of the screen turns amber. Then the answer is typed in place of your request.
+Press **Ctrl+Alt+Space**, type your request, press **Enter**. A small `i_rdy` appears in the top-right corner of the screen while you type. While it thinks, your text becomes a quick `...` and the corner shows `i_...`. Then the answer is typed in place of your request.
 
 Inkling knows which app you're in and tailors the answer to it: a bash command in a WSL terminal, a PowerShell command in PowerShell, a formula in Excel, code in the right language in your editor (from the file name in the window title), plain words in Notepad.
 
@@ -41,7 +43,7 @@ Inkling knows which app you're in and tailors the answer to it: a bash command i
 
 ### Ask about selected text
 
-Select some text and press **Ctrl+Alt+Enter**. The selection is the request, and the answer replaces it.
+Select some text and press **Ctrl+Alt+Enter**. The selection is the request, and the answer replaces it. Nothing appears in the corner: the selection turning into the answer is the signal.
 
 ![Selecting "translate to french: good morning, my friend" in Notepad, pressing Ctrl+Alt+Enter, and getting "Bonjour, mon ami" in its place](docs/media/select.gif)
 
@@ -49,7 +51,7 @@ The selection is copied with Ctrl+C and your clipboard is put back right after (
 
 ### Try again
 
-Not quite right? Press **Ctrl+Alt+R** straight away. The answer is swapped for a different one, and the model is told which answers you passed on.
+Not quite right? Press **Ctrl+Alt+R** straight away. The answer is swapped for a different one (quietly, with no corner badge), and the model is told which answers you passed on.
 
 ![In Notepad, "another word for happy" becomes "joyful"; Ctrl+Alt+R swaps it for "cheerful"](docs/media/retry.gif)
 
@@ -80,7 +82,7 @@ Click the tray icon. Changes apply straight away.
 
 - **General:** the three shortcuts (click a box and press the keys; Inkling refuses ones that Windows or every app relies on, like Ctrl+C or Win+L, and warns if another program already uses one), answer length, light or dark, start with Windows.
 - **Model:** Nemotron 3.5 Bolt (the default) or Laguna XS 2.1, and your API key.
-- **Typing:** the corner light or a bar next to the cursor, the `...` animation, typing speed, a slower speed for apps that drop fast typing (Notepad), and one-line answers.
+- **Typing:** the `i_rdy` corner badge or a bar next to the cursor, the `...` animation, typing speed, a slower speed for apps that drop fast typing (Notepad), and one-line answers.
 - **Snippets:** your instant replies.
 - **Privacy:** the risky-command check, apps where Inkling stays off (password managers by default; add games or remote desktops), and whether window titles are sent.
 - **About:** updates, the welcome guide, request timings, the log, and *Copy diagnostics* for bug reports.
@@ -89,7 +91,7 @@ Click the tray icon. Changes apply straight away.
 
 Inkling calls NVIDIA's API directly over HTTPS; nothing runs in the background between requests. The connection is opened the moment you press the shortcut, so it's ready by the time you press Enter, and Inkling stops reading as soon as the first line of the answer is complete.
 
-The two models on offer were picked by benchmarking every model the free API serves, with 42 questions across 14 areas (bash, PowerShell, git, Docker, Python, JavaScript, SQL, regex, Excel, facts, maths, units, translation, grammar), each asked as if typed in a matching app:
+The two models on offer were picked from NVIDIA's free catalog: about 30 of its chat models were tried, most returned errors or took too long, and the 5 that answered were benchmarked against Claude Haiku with 42 questions across 14 areas (bash, PowerShell, git, Docker, Python, JavaScript, SQL, regex, Excel, facts, maths, units, translation, grammar), each asked as if typed in a matching app:
 
 | Model | Correct | Median time | 90% within |
 |---|---|---|---|
@@ -109,7 +111,7 @@ Each request sends your request (or selected text), the app's name, the answer l
 
 - Your API key is kept in Windows Credential Manager, never in a file.
 - The log (`%APPDATA%\Inkling\inkling.log`) holds only timings and errors, never what you typed or the answer.
-- Keystrokes are watched only after you press the shortcut, kept in memory, and never written anywhere.
+- Inkling's keyboard hook sees every key press, since that's how it notices the shortcut, but it only keeps what you type after the shortcut, in memory, and never writes it anywhere.
 - The only other connection is the daily update check, to GitHub.
 
 ## Known limits
@@ -145,6 +147,18 @@ Developer options of `Inkling.exe`:
 | `--check-update` | Asks GitHub for the latest release |
 | `--render-ui <folder> [light\|dark]` | Saves pictures of the Settings tabs and the welcome window |
 | `--render-media <folder>` | Renders the README GIFs (mock scenes drawn frame by frame, encoded with FFmpeg) |
+| `--write-icon <file.ico>` | Writes the app icon from the drawing code |
+| `--write-logo-svg <folder>` | Writes the README header and logo SVGs, with the letters as outlines |
+
+Any other option prints this list instead of starting Inkling.
+
+## Test it
+
+```bash
+dotnet test Inkling.Tests
+```
+
+66 unit tests: the risky-command rules, snippets, answer cleaning, shortcut parsing, the prompt, per-app hints, update tags, the corner badge and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
 
 ## How it's put together
 
@@ -153,7 +167,9 @@ Developer options of `Inkling.exe`:
 - `Ai/ChatApiBackend.cs`: the NVIDIA API (any OpenAI-compatible endpoint), streamed. `Ai/StreamCliBackend.cs`: the optional CLI backends.
 - `ForegroundContext.cs` and `Ai/Prompt.cs`: what the model is told about where you're typing.
 - `RiskGuard.cs`, `Snippets.cs`, `Updates.cs`, `Secrets.cs` (Credential Manager), `Diagnostics.cs` (timings).
-- `Ui/Wpf/`: Settings, welcome and update windows (WPF with the Windows 11 look). `Ui/StatusOverlay.cs`: the corner light and the bar.
+- `Ui/InklingArt.cs`: the logo, drawn from Georgia italic. `docs/media/logo.svg` is the icon as a vector, for anywhere it's needed.
+- `Inkling.Tests/`: the unit tests.
+- `Ui/Wpf/`: Settings, welcome and update windows (WPF with the Windows 11 look). `Ui/StatusOverlay.cs`: the `i_rdy` corner badge and the bar.
 - `installer/Inkling.iss`: the per-user Inno Setup installer.
 
 ## Publishing a release

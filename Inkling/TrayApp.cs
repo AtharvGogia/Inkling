@@ -44,7 +44,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _ui = new Control();
         _ui.CreateControl(); // a UI-thread handle for BeginInvoke from the hooks
         _ = _ui.Handle;
-        _overlay = new StatusOverlay { Style = StatusOverlay.Parse(_config.Indicator) };
+        _overlay = new StatusOverlay { Style = StatusOverlay.Parse(_config.Indicator), Dark = IsDark(_config.Theme) };
 
         _capture = new CaptureController(_ui, () => _config, () => _backend, _overlay);
         _backend.Warm();
@@ -100,6 +100,11 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _ => new ChatApiBackend(cfg),
     };
 
+    /// <summary>Whether Inkling's theme is dark: set to Dark, or "Same as Windows" with Windows' apps in dark mode.</summary>
+    private static bool IsDark(string theme) =>
+        theme.Equals("dark", StringComparison.OrdinalIgnoreCase) ||
+        (!theme.Equals("light", StringComparison.OrdinalIgnoreCase) && Theme.SystemUsesDark());
+
     private static string Describe(AppConfig cfg) => cfg.Backend.ToLowerInvariant() switch
     {
         "claude" => $"Claude Code CLI ({cfg.ClaudeModel})",
@@ -117,6 +122,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _config = cfg;
         _config.Save();
         _overlay.Style = StatusOverlay.Parse(_config.Indicator);
+        _overlay.Dark = IsDark(_config.Theme);
         if (old.Hotkey != cfg.Hotkey || old.RetryHotkey != cfg.RetryHotkey || old.SelectionHotkey != cfg.SelectionHotkey)
         {
             try { _capture.ReloadHotkey(); }
@@ -283,6 +289,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         cfg.NimModel = id;
         cfg.Backend = "nim";
         Apply(cfg);
+        _settings?.Reload();
     }
 
     private void SetLength(string length)
@@ -290,6 +297,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         var cfg = _config.Clone();
         cfg.AnswerLength = length;
         Apply(cfg);
+        _settings?.Reload();
     }
 
     private void TogglePause()

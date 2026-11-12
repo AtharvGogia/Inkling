@@ -271,7 +271,7 @@ internal sealed class CaptureController : IDisposable
             Stop($"Select-to-ask isn't supported in terminals: use {_hotkey} and type the request");
             return;
         }
-        _overlay.ShowThinking(_targetHwnd, "reading selection");
+        // Select-to-ask shows no indicator: the selection turning into the answer is feedback enough.
         string? text = null;
         try
         {
@@ -327,7 +327,9 @@ internal sealed class CaptureController : IDisposable
         var trace = job.Trace;
         var backend = _backend();
         var cts = _requestCts ??= new CancellationTokenSource(TimeSpan.FromSeconds(cfg.TimeoutSeconds));
-        _overlay.ShowThinking(_targetHwnd, backend.DisplayName + (job.RetryOf != null ? " (retry)" : ""));
+        // Only a typed request gets the "i_..." badge; select-to-ask and retry stay quiet.
+        if (!job.Selected && job.RetryOf == null) _overlay.ShowThinking(_targetHwnd, backend.DisplayName);
+        else _overlay.HideNow();
         _shownLength = TextElements(job.OnScreen);
         _selectionShown = job.Selected;
         var process = ForegroundContext.ProcessName(_targetHwnd);

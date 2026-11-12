@@ -27,7 +27,7 @@
     { "domain": "Git", "in": "bash", "q": "show last 5 commits one line each", "require": ["git\\s+log", "--oneline|--pretty=oneline|--format", "-5\\b|-n\\s*5|--max-count=5"] },
 
     { "domain": "Docker", "in": "bash", "q": "list all containers including stopped ones", "expect": ["docker\\s+(ps\\s+(-a|--all)|container\\s+ls\\s+(-a|--all))"] },
-    { "domain": "Docker", "in": "bash", "q": "remove all unused images", "expect": ["docker\\s+image\\s+prune\\s+(-a|--all)|docker\\s+system\\s+prune\\s+(-a|--all)|docker\\s+image\\s+prune"] },
+    { "domain": "Docker", "in": "bash", "q": "remove all unused docker images", "expect": ["docker\\s+image\\s+prune\\s+(-a|--all)|docker\\s+system\\s+prune\\s+(-a|--all)|docker\\s+image\\s+prune"] },
 
     { "domain": "Python", "in": "python", "q": "reverse a string s", "expect": ["s\\[::-1\\]|['\"]{2}\\.join\\(reversed\\(s\\)\\)"] },
     { "domain": "Python", "in": "python", "q": "read data.csv into a pandas dataframe", "expect": ["pd\\.read_csv\\(\\s*['\"]data\\.csv"] },

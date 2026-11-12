@@ -19,7 +19,7 @@ namespace Inkling.Ui.Wpf;
 
 /// <summary>
 /// Dev tool: Inkling.exe --render-media &lt;folder&gt; renders the README GIFs. Each is a short scene on a mock
-/// Windows desktop (a terminal or Notepad, Inkling's corner light and confirm bar, on-screen key labels),
+/// Windows desktop (a terminal or Notepad, Inkling's i_rdy badge and confirm bar, on-screen key labels),
 /// drawn frame by frame and encoded with FFmpeg. Nothing on the real screen is recorded, nothing is sent.
 /// </summary>
 internal static class ReadmeMedia
@@ -29,7 +29,7 @@ internal static class ReadmeMedia
     private static readonly WpfFontFamily Mono = new("Cascadia Mono, Consolas");
     private static readonly WpfFontFamily Icons = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
-    private enum Light { Off, Listening, Thinking, Done }
+    private enum Light { Off, Listening, Thinking }
 
     /// <summary>What a frame shows: the line being edited, and the overlays.</summary>
     private sealed record Frame(string Before, string Selected, string After, bool Caret, Light Light, string? Key, string? Confirm);
@@ -47,7 +47,7 @@ internal static class ReadmeMedia
             if (Directory.Exists(frames)) Directory.Delete(frames, true);
             Directory.CreateDirectory(frames);
             int n = (int)Math.Ceiling(scene.Length * Fps);
-            for (int i = 0; i < n; i++) Save(Draw(scene, scene.At(i / (double)Fps)), Path.Combine(frames, $"{i:0000}.png"));
+            for (int i = 0; i < n; i++) Save(Draw(scene, scene.At(i / (double)Fps), i / (double)Fps), Path.Combine(frames, $"{i:0000}.png"));
             var gif = Path.Combine(folder, scene.Name + ".gif");
             if (!Encode(frames, gif)) exit = 1;
             else Console.WriteLine($"{gif}: {new FileInfo(gif).Length / 1024} KB, {n} frames");
@@ -74,8 +74,8 @@ internal static class ReadmeMedia
             if (t < 0.9) return new("", "", "", Blink(t), Light.Off, null, null);
             if (t < 3.1) return new(Typed(req, t, 1.3, 16), "", "", true, Light.Listening, t < 1.9 ? "Ctrl + Alt + Space" : null, null);
             if (t < 4.4) return new(t < 3.25 ? req : Dots(t, 3.25), "", "", true, Light.Thinking, t < 3.9 ? "Enter" : null, null);
-            if (t < 5.4) return new(Typed(ans, t, 4.4, 40), "", "", true, Light.Done, null, null);
-            return new(ans, "", "", Blink(t), t < 6.0 ? Light.Done : Light.Off, null, null);
+            if (t < 5.4) return new(Typed(ans, t, 4.4, 40), "", "", true, Light.Off, null, null);
+            return new(ans, "", "", Blink(t), t < 6.0 ? Light.Off : Light.Off, null, null);
         });
     }
 
@@ -92,9 +92,9 @@ internal static class ReadmeMedia
                 return new(text[..^sel], text[^sel..], "", false, Light.Off, null, null);
             }
             if (t < 2.2) return new("", text, "", false, Light.Off, "Ctrl + Alt + Enter", null);
-            if (t < 3.6) return new(Dots(t, 2.2), "", "", true, Light.Thinking, t < 2.9 ? "Ctrl + Alt + Enter" : null, null);
-            if (t < 4.2) return new(Typed(ans, t, 3.6, 40), "", "", true, Light.Done, null, null);
-            return new(ans, "", "", Blink(t), t < 4.8 ? Light.Done : Light.Off, null, null);
+            if (t < 3.6) return new(Dots(t, 2.2), "", "", true, Light.Off, t < 2.9 ? "Ctrl + Alt + Enter" : null, null);
+            if (t < 4.2) return new(Typed(ans, t, 3.6, 40), "", "", true, Light.Off, null, null);
+            return new(ans, "", "", Blink(t), t < 4.8 ? Light.Off : Light.Off, null, null);
         });
     }
 
@@ -107,10 +107,10 @@ internal static class ReadmeMedia
             if (t < 0.6) return new("", "", "", Blink(t), Light.Off, null, null);
             if (t < 2.4) return new(Typed(req, t, 1.0, 16), "", "", true, Light.Listening, t < 1.5 ? "Ctrl + Alt + Space" : null, null);
             if (t < 3.4) return new(t < 2.5 ? req : Dots(t, 2.5), "", "", true, Light.Thinking, t < 3.0 ? "Enter" : null, null);
-            if (t < 4.6) return new(Typed("joyful", t, 3.4, 30), "", "", Blink(t), t < 4.0 ? Light.Done : Light.Off, null, null);
-            if (t < 5.8) return new(t < 4.75 ? "joyful" : Dots(t, 4.75), "", "", true, Light.Thinking, t < 5.3 ? "Ctrl + Alt + R" : null, null);
-            if (t < 6.4) return new(Typed("cheerful", t, 5.8, 30), "", "", true, Light.Done, null, null);
-            return new("cheerful", "", "", Blink(t), t < 6.9 ? Light.Done : Light.Off, null, null);
+            if (t < 4.6) return new(Typed("joyful", t, 3.4, 30), "", "", Blink(t), t < 4.0 ? Light.Off : Light.Off, null, null);
+            if (t < 5.8) return new(t < 4.75 ? "joyful" : Dots(t, 4.75), "", "", true, Light.Off, t < 5.3 ? "Ctrl + Alt + R" : null, null);
+            if (t < 6.4) return new(Typed("cheerful", t, 5.8, 30), "", "", true, Light.Off, null, null);
+            return new("cheerful", "", "", Blink(t), t < 6.9 ? Light.Off : Light.Off, null, null);
         });
     }
 
@@ -135,7 +135,7 @@ internal static class ReadmeMedia
     private static WpfBrush B(uint argb) =>
         new SolidColorBrush(WpfColor.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb));
 
-    private static FrameworkElement Draw(Scene s, Frame f)
+    private static FrameworkElement Draw(Scene s, Frame f, double t)
     {
         var root = new Canvas { Width = W, Height = H };
         root.Background = new LinearGradientBrush(WpfColor.FromRgb(0x26, 0x46, 0x53), WpfColor.FromRgb(0xFF, 0x7D, 0x00), 35);
@@ -212,17 +212,12 @@ internal static class ReadmeMedia
             Add(root, bar, wx + 24, wy + 34 + 12 + 26);
         }
 
-        // Corner light: top-left of the screen.
+        // The "i_rdy" badge, top-right of the screen, as Inkling draws it (dark theme).
         if (f.Light != Light.Off)
         {
-            var color = f.Light switch { Light.Thinking => InklingArt.Amber, Light.Done => InklingArt.Green, _ => InklingArt.Accent };
-            var pill = new WpfBorder { Background = B(0xE61C1C20), CornerRadius = new CornerRadius(14), Padding = new Thickness(4) };
-            var row = new StackPanel { Orientation = WpfOrientation.Horizontal };
-            row.Children.Add(new WpfImage { Source = Mark(color), Width = 20, Height = 20 });
-            if (f.Light == Light.Thinking)
-                row.Children.Add(new WpfTextBlock { Text = " ...", Foreground = B(0xFFFFFFFF), FontFamily = Ui, FontSize = 13, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 2) });
-            pill.Child = row;
-            Add(root, pill, 8, 8);
+            var mode = f.Light == Light.Thinking ? BadgeIndicator.Mode.Thinking : BadgeIndicator.Mode.Ready;
+            var img = Badge(BadgeIndicator.TextAt(mode, t) ?? "i_rdy");
+            Add(root, new WpfImage { Source = img, Width = img.PixelWidth, Height = img.PixelHeight }, W - 8 - img.PixelWidth, 8);
         }
 
         // Key label, bottom centre.
@@ -247,19 +242,26 @@ internal static class ReadmeMedia
         return root;
     }
 
-    private static readonly Dictionary<int, BitmapSource> Marks = [];
+    private static readonly Dictionary<string, BitmapSource> Badges = [];
 
-    private static BitmapSource Mark(System.Drawing.Color c)
+    /// <summary>The badge drawn by the app's own code, at the size it has on a 100% display.</summary>
+    private static BitmapSource Badge(string text)
     {
-        if (Marks.TryGetValue(c.ToArgb(), out var cached)) return cached;
-        using var bmp = new System.Drawing.Bitmap(64, 64, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using (var g = System.Drawing.Graphics.FromImage(bmp)) InklingArt.DrawMark(g, new System.Drawing.RectangleF(1, 1, 62, 62), c);
+        if (Badges.TryGetValue(text, out var cached)) return cached;
+        System.Drawing.Size size;
+        using (var font = BadgeIndicator.MonoFont(12f))
+        {
+            var m = TextRenderer.MeasureText("i_rdy", font, System.Drawing.Size.Empty, TextFormatFlags.NoPadding);
+            size = new System.Drawing.Size(m.Width + 14, m.Height + 6);
+        }
+        using var bmp = new System.Drawing.Bitmap(size.Width, size.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = System.Drawing.Graphics.FromImage(bmp)) BadgeIndicator.DrawBadge(g, size, 1f, text, InklingArt.Accent, dark: true);
         using var ms = new MemoryStream();
         bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
         ms.Position = 0;
         var img = BitmapFrame.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
         img.Freeze();
-        return Marks[c.ToArgb()] = img;
+        return Badges[text] = img;
     }
 
     private static void Add(Canvas c, UIElement e, double x, double y)
