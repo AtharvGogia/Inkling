@@ -17,7 +17,7 @@
     <RootNamespace>Inkling</RootNamespace>
     <Product>Inkling</Product>
     <ApplicationIcon Condition="Exists('Assets/inkling.ico')">Assets/inkling.ico</ApplicationIcon>
-    <Version>0.4.3</Version>
+    <Version>0.4.4</Version>
     <Authors>Atharv Gogia</Authors>
     <Company>Atharv Gogia</Company>
     <Description>Type a request anywhere in Windows and get a short AI answer in its place.</Description>
