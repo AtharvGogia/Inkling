@@ -34,7 +34,7 @@ internal sealed class StatusOverlay : IDisposable
     {
         if (Style == IndicatorStyle.Bar)
             _bar.Display(target, chars == 0 ? "Inkling ▸ type your request · Enter = ask · Esc = cancel" : $"Inkling ▸ {chars} chars · Enter = ask · Esc = cancel",
-                InklingArt.Violet, 0);
+                InklingArt.Accent, 0);
         else if (chars == 0 || !_icon.Visible) _icon.Start(target, IconIndicator.Mode.Listening);
     }
 
@@ -182,12 +182,12 @@ internal sealed class IconIndicator : Form
         switch (_mode)
         {
             case Mode.Listening: // active: gentle breathing
-                color = InklingArt.Violet;
+                color = InklingArt.Accent;
                 double b = (Math.Sin(t * Math.PI * 2 / 1.4) + 1) / 2;
                 scale = 0.88f + 0.12f * (float)b;
                 alpha = 190 + (int)(65 * b);
                 break;
-            case Mode.Thinking: // amber, quick pulse (the ". . ." animation runs in the text field itself)
+            case Mode.Thinking: // yellow, quick pulse (the ". . ." animation runs in the text field itself)
                 color = InklingArt.Amber;
                 double q = (Math.Sin(t * Math.PI * 2 / 0.45) + 1) / 2;
                 alpha = 150 + (int)(105 * q);
@@ -289,7 +289,7 @@ internal sealed class BarIndicator : Form
 {
     private readonly System.Windows.Forms.Timer _hideTimer = new();
     private string _text = "";
-    private Color _accent = InklingArt.Violet;
+    private Color _accent = InklingArt.Accent;
 
     public BarIndicator()
     {

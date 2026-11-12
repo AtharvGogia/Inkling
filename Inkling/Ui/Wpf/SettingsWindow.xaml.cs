@@ -41,7 +41,7 @@ internal sealed partial class SettingsWindow : Window
         _cfg = host.Config.Clone();
         InitializeComponent();
         Theme.ApplyTo(this, _cfg.Theme);
-        Logo.Source = AppIcon();
+        Wordmark.Source = WordmarkImage(_cfg.Theme);
         VersionText.Text = $"Inkling {AppInfo.Version}";
 
         foreach (var box in new[] { AskHotkey, SelectionHotkey, RetryHotkey })
@@ -56,7 +56,7 @@ internal sealed partial class SettingsWindow : Window
         foreach (var (rb, len) in new[] { (LengthShort, "short"), (LengthSentence, "sentence"), (LengthParagraph, "paragraph") })
             rb.Checked += (_, _) => Set(c => c.AnswerLength = len);
         foreach (var (rb, theme) in new[] { (ThemeSystem, "system"), (ThemeLight, "light"), (ThemeDark, "dark") })
-            rb.Checked += (_, _) => { Set(c => c.Theme = theme); Theme.ApplyTo(this, theme); };
+            rb.Checked += (_, _) => { Set(c => c.Theme = theme); Theme.ApplyTo(this, theme); Wordmark.Source = WordmarkImage(theme); };
         StartupCheck.Click += (_, _) => _host.StartupEnabled = StartupCheck.IsChecked == true;
 
         foreach (var (rb, backend) in new[] { (BackendNim, "nim"), (BackendClaude, "claude"), (BackendAgy, "agy") })
@@ -292,6 +292,7 @@ internal sealed partial class SettingsWindow : Window
         Commit();
         LoadFromConfig();
         Theme.ApplyTo(this, _cfg.Theme);
+        Wordmark.Source = WordmarkImage(_cfg.Theme);
     }
 
     private void Done_Click(object sender, RoutedEventArgs e) => Close();
@@ -304,20 +305,26 @@ internal sealed partial class SettingsWindow : Window
 
     [System.Runtime.InteropServices.DllImport("gdi32.dll")] private static extern bool DeleteObject(nint h);
 
-    /// <summary>The Inkling mark, for window headers.</summary>
-    internal static BitmapSource? AppIcon()
+    /// <summary>The app icon (the i mark on its paper tile), for window headers.</summary>
+    internal static BitmapSource? AppIcon() => Render(128, 128, (g, w, h) => InklingArt.DrawIcon(g, new System.Drawing.RectangleF(2, 2, w - 4, h - 4)));
+
+    /// <summary>The "inkling_" wordmark, light or dark to suit the theme.</summary>
+    internal static BitmapSource? WordmarkImage(string theme)
+    {
+        bool dark = theme.Equals("dark", StringComparison.OrdinalIgnoreCase) || (!theme.Equals("light", StringComparison.OrdinalIgnoreCase) && Theme.SystemUsesDark());
+        var ink = dark ? System.Drawing.Color.FromArgb(0xF2, 0xF2, 0xF2) : InklingArt.Ink;
+        return Render(560, 140, (g, w, h) => InklingArt.DrawWordmark(g, new System.Drawing.RectangleF(2, 2, w - 4, h - 4), ink));
+    }
+
+    private static BitmapSource? Render(int w, int h, Action<System.Drawing.Graphics, int, int> draw)
     {
         try
         {
-            using var bmp = new System.Drawing.Bitmap(128, 128, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = System.Drawing.Graphics.FromImage(bmp))
-            {
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                InklingArt.DrawMark(g, new System.Drawing.RectangleF(4, 4, 120, 120), InklingArt.Violet);
-            }
-            var h = bmp.GetHbitmap(System.Drawing.Color.FromArgb(0, 0, 0, 0));
-            try { return Imaging.CreateBitmapSourceFromHBitmap(h, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()); }
-            finally { DeleteObject(h); }
+            using var bmp = new System.Drawing.Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = System.Drawing.Graphics.FromImage(bmp)) draw(g, w, h);
+            var hb = bmp.GetHbitmap(System.Drawing.Color.FromArgb(0, 0, 0, 0));
+            try { return Imaging.CreateBitmapSourceFromHBitmap(hb, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()); }
+            finally { DeleteObject(hb); }
         }
         catch { return null; }
     }

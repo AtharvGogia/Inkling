@@ -138,7 +138,7 @@ internal static class ReadmeMedia
     private static FrameworkElement Draw(Scene s, Frame f)
     {
         var root = new Canvas { Width = W, Height = H };
-        root.Background = new LinearGradientBrush(WpfColor.FromRgb(0x3B, 0x3F, 0x8C), WpfColor.FromRgb(0x9A, 0x7B, 0xD8), 35);
+        root.Background = new LinearGradientBrush(WpfColor.FromRgb(0x26, 0x46, 0x53), WpfColor.FromRgb(0xFF, 0x7D, 0x00), 35);
         // Soft shapes on the wallpaper.
         Add(root, new System.Windows.Shapes.Ellipse { Width = 520, Height = 520, Fill = B(0x22FFFFFF) }, -140, 220);
         Add(root, new System.Windows.Shapes.Ellipse { Width = 380, Height = 380, Fill = B(0x18FFFFFF) }, 700, -120);
@@ -146,7 +146,7 @@ internal static class ReadmeMedia
         // Taskbar
         var taskbar = new WpfBorder { Width = W, Height = 44, Background = B(0xE6202024) };
         var icons = new StackPanel { Orientation = WpfOrientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var c in new uint[] { 0xFF3A8EE6, 0xFF2D2D30, 0xFFF2C94C, 0xFF6C5CE7 })
+        foreach (var c in new uint[] { 0xFF3A8EE6, 0xFF2D2D30, 0xFFF2C94C, 0xFFFF7D00 })
             icons.Children.Add(new WpfBorder { Width = 24, Height = 24, CornerRadius = new CornerRadius(5), Background = B(c), Margin = new Thickness(7, 0, 7, 0) });
         taskbar.Child = icons;
         Add(root, taskbar, 0, H - 44);
@@ -215,7 +215,7 @@ internal static class ReadmeMedia
         // Corner light: top-left of the screen.
         if (f.Light != Light.Off)
         {
-            var color = f.Light switch { Light.Thinking => InklingArt.Amber, Light.Done => InklingArt.Green, _ => InklingArt.Violet };
+            var color = f.Light switch { Light.Thinking => InklingArt.Amber, Light.Done => InklingArt.Green, _ => InklingArt.Accent };
             var pill = new WpfBorder { Background = B(0xE61C1C20), CornerRadius = new CornerRadius(14), Padding = new Thickness(4) };
             var row = new StackPanel { Orientation = WpfOrientation.Horizontal };
             row.Children.Add(new WpfImage { Source = Mark(color), Width = 20, Height = 20 });

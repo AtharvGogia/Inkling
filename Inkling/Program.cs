@@ -30,6 +30,7 @@ internal static class Program
         if (args.Length >= 1 && args[0] == "--risk-test") { AttachConsole(-1); return RiskSelfTest(); }
         if (args.Length >= 1 && args[0] == "--bench") { AttachConsole(-1); return Bench.Run(args); }
         // Build helper: regenerate Assets\inkling.ico from the drawing code.
+        if (args.Length == 2 && args[0] == "--write-logo-svg") { Ui.InklingArt.WriteSvgs(args[1]); return 0; }
         if (args.Length == 2 && args[0] == "--write-icon")
         {
             Ui.InklingArt.WriteIco(args[1], 16, 20, 24, 32, 40, 48, 64, 256);

@@ -25,6 +25,11 @@ internal sealed class HotkeyBox : WpfTextBox
         IsReadOnlyCaretVisible = false;
         Cursor = System.Windows.Input.Cursors.Hand;
         MinWidth = 200;
+        // Read-only text boxes don't follow the dark theme on their own: use the theme's control colours.
+        SetResourceReference(BackgroundProperty, "ControlFillColorDefaultBrush");
+        SetResourceReference(ForegroundProperty, "TextFillColorPrimaryBrush");
+        SetResourceReference(BorderBrushProperty, "ControlStrokeColorDefaultBrush");
+        Padding = new System.Windows.Thickness(8, 5, 8, 5);
         GotKeyboardFocus += (_, _) => { _before = _value; Text = "Press a shortcut…"; RecordingChanged?.Invoke(true); };
         LostKeyboardFocus += (_, _) => { Text = Display(_value); RecordingChanged?.Invoke(false); };
     }

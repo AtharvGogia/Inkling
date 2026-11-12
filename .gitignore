@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Installer output
 dist/
+
+# Release notes are part of the repo.
+!docs/releases/

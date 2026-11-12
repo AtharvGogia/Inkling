@@ -27,9 +27,8 @@
 
         <DockPanel>
             <StackPanel DockPanel.Dock="Top">
-                <Image x:Name="Logo" Width="60" Height="60" HorizontalAlignment="Left" />
-                <TextBlock Text="Inkling" FontSize="28" FontWeight="SemiBold" Margin="0,10,0,0" />
-                <TextBlock Text="Answers where you type." Style="{StaticResource Hint}" />
+                <Image x:Name="Wordmark" Height="46" HorizontalAlignment="Left" Stretch="Uniform" />
+                <TextBlock Text="Answers where you type." Style="{StaticResource Hint}" Margin="0,8,0,0" />
 
                 <Border CornerRadius="8" Padding="12" Margin="0,20,0,0" Background="{DynamicResource ControlFillColorDefaultBrush}">
                     <StackPanel>
