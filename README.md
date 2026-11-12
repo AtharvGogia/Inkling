@@ -178,7 +178,7 @@ Any other option prints this list instead of starting Inkling.
 dotnet test Inkling.Tests
 ```
 
-66 unit tests: the risky-command rules, snippets, answer cleaning, shortcut parsing, the prompt, per-app hints, update tags, the corner badge and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
+69 unit tests: the risky-command rules, snippets, answer cleaning, shortcut parsing, the prompt, per-app hints, update tags, the corner badge and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
 
 ## How it's put together
 
