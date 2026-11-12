@@ -76,7 +76,7 @@ public sealed class ChatApiBackend : IAiBackend
         trace.ColdStart = last == 0 || Stopwatch.GetElapsedTime(last) > TimeSpan.FromMinutes(2);
         Interlocked.Exchange(ref _lastUse, Stopwatch.GetTimestamp());
 
-        var body = BuildBody(message, trace.Retry);
+        var body = BuildBody(message, trace.Retry, trace.Multiline);
         trace.PromptChars = message.Length;
         using var req = new HttpRequestMessage(HttpMethod.Post, BaseUrl + "/chat/completions")
         {
@@ -124,7 +124,7 @@ public sealed class ChatApiBackend : IAiBackend
             catch (JsonException) { }
             finally { trace.ParseMs += RequestTrace.Since(parseStart); }
 
-            if (_config.SingleLine && HasCompleteFirstLine(answer)) break;
+            if (_config.SingleLine && !trace.Multiline && HasCompleteFirstLine(answer)) break;
         }
         trace.ResultMs = RequestTrace.Since(sent);
         Interlocked.Exchange(ref _lastUse, Stopwatch.GetTimestamp());
@@ -155,7 +155,7 @@ public sealed class ChatApiBackend : IAiBackend
         return nl > 0 && rest[..nl].Trim().Length > 0;
     }
 
-    private string BuildBody(string message, bool retry)
+    private string BuildBody(string message, bool retry, bool multiline)
     {
         var messages = new List<object> { new { role = "system", content = _config.SystemPrompt } };
         foreach (var ex in _config.Examples)
@@ -167,6 +167,7 @@ public sealed class ChatApiBackend : IAiBackend
         // Generous on purpose: reasoning models spend tokens thinking before the answer, and for the others
         // reading stops at the end of the first line anyway (SingleLine), so a high cap costs nothing.
         int maxTokens = Prompt.NormalizeLength(_config.AnswerLength) switch { "sentence" => 1024, "paragraph" => 1536, _ => 768 };
+        if (multiline) maxTokens = Math.Max(maxTokens, 1536); // code: the whole thing is read, not just the first line
         return JsonSerializer.Serialize(new
         {
             model = _config.NimModel,

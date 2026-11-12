@@ -39,6 +39,32 @@ internal static class InputSender
         Send([Key(VK_CONTROL, ctrlScan, 0), Key(vk, scan, 0), Key(vk, scan, KEYEVENTF_KEYUP), Key(VK_CONTROL, ctrlScan, KEYEVENTF_KEYUP)]);
     }
 
+    private const ushort VK_V = 0x56;
+
+    /// <summary>
+    /// Puts <paramref name="text"/> in with Ctrl+V and then restores the clipboard. For multi-line answers (code):
+    /// pasted text keeps its indentation, where typed keys get re-indented and brackets auto-closed by editors.
+    /// The text is marked so it stays out of clipboard history (Win+V) and cloud clipboard sync.
+    /// Runs on the UI (STA) thread.
+    /// </summary>
+    public static async Task PasteTextAsync(string text, nint targetHwnd)
+    {
+        if (GetForegroundWindow() != targetHwnd) return;
+        var saved = SelectionReader.Snapshot();
+        try
+        {
+            var data = new DataObject();
+            data.SetData(DataFormats.UnicodeText, text.Replace("\r\n", "\n").Replace("\n", "\r\n"));
+            data.SetData("ExcludeClipboardContentFromMonitorProcessing", new MemoryStream([0]));
+            data.SetData("CanIncludeInClipboardHistory", new MemoryStream(BitConverter.GetBytes(0)));
+            data.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)));
+            SelectionReader.Retry(() => { Clipboard.SetDataObject(data, copy: true, retryTimes: 5, retryDelay: 20); return 0; });
+            SendCtrlKey(VK_V);
+            await Task.Delay(250); // the app reads the clipboard when it handles the key, not when it's sent
+        }
+        finally { SelectionReader.Restore(saved); }
+    }
+
     /// <summary>The text exactly as <see cref="TypeTextAsync"/> puts it on screen.</summary>
     public static string AsTyped(string text, bool newlinesAsEnter)
     {

@@ -18,6 +18,10 @@ public sealed class RequestTrace
     public string App { get; set; } = "";
     public string Length { get; set; } = "";
     public bool Retry { get; set; }
+    /// <summary>"code" when the request asked for code to be written, else "text".</summary>
+    public string Kind { get; set; } = "text";
+    /// <summary>The answer may have several lines (code outside a terminal): read the whole stream, paste it.</summary>
+    public bool Multiline { get; set; }
     public string Outcome { get; set; } = "";
 
     // Before the request is sent
@@ -87,7 +91,7 @@ public sealed class RequestTrace
     public double CliOverheadMs => ResultMs >= 0 && ApiMs >= 0 ? Math.Max(0, ResultMs - ApiMs) : -1;
 
     public string OneLine() =>
-        $"trace {Backend} {App} {(Retry ? "retry " : "")}{Outcome}: total {Ms(TotalMs)} | sent@{Ms(SentAtMs)} " +
+        $"trace {Backend} {App} {Kind} {(Retry ? "retry " : "")}{Outcome}: total {Ms(TotalMs)} | sent@{Ms(SentAtMs)} " +
         $"(sel {Ms(SelectionMs)} {SelectionChars} ch, ctx {Ms(ContextMs)}, gate {Ms(GateWaitMs)}{(ColdStart ? $", COLD spawn {Ms(SpawnMs)}" : "")}) | " +
         $"turn {Ms(ResultMs)} (first-out {Ms(FirstOutputMs)}, api {Ms(ApiMs)}, cli-overhead {Ms(CliOverheadMs)}) | " +
         $"parse {Ms(ParseMs)} | dots-stop {Ms(DotsStopMs)} erase {Ms(FinalEraseMs)} type {Ms(TypeMs)} ({TypedChars} ch @ {PaceMs} ms) | " +
@@ -96,7 +100,7 @@ public sealed class RequestTrace
     public string Report()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"{At:HH:mm:ss}  {Backend}  in {(App.Length > 0 ? App : "?")}{(Retry ? "  (retry)" : "")}  length={Length}  -> {Outcome}");
+        sb.AppendLine($"{At:HH:mm:ss}  {Backend}  in {(App.Length > 0 ? App : "?")}{(Retry ? "  (retry)" : "")}  length={Length}  {Kind}{(Multiline ? ", pasted" : "")}  -> {Outcome}");
         void Row(string label, double v, string note = "") =>
             sb.AppendLine($"  {label,-34}{Ms(v),8} ms  {note}");
 

@@ -311,3 +311,132 @@ public class BrowserUrlTests
     [InlineData("GitHub - Floorp", false)]
     public void Spots_private_windows(string title, bool expected) => Assert.Equal(expected, BrowserUrl.IsPrivate(title));
 }
+
+public class CodeIntentTests
+{
+    [Theory]
+    [InlineData("create and reverse a string in rust", "Rust")]
+    [InlineData("reverse a string using python", "Python")]
+    [InlineData("rust function that adds two numbers", "Rust")]
+    [InlineData("sql query for the 5 newest users", "SQL")]
+    [InlineData("hello world in c#", "C#")]
+    [InlineData("hello world in c++", "C++")]
+    [InlineData("hello world in c", "C")]
+    [InlineData("fizzbuzz in go", "Go")]
+    [InlineData("parse json for typescript", "TypeScript")]
+    [InlineData("bash script to back up my home folder", "Bash")]
+    public void Language_named_in_the_request(string request, string language) =>
+        Assert.Equal(language, CodeDetector.Detect(request)?.Language);
+
+    [Theory]
+    [InlineData("how to remove rust from metal")]
+    [InlineData("thank you in japanese")]
+    [InlineData("words that start with r")]
+    [InlineData("foods rich in vitamin c")]
+    [InlineData("capital of france")]
+    [InlineData("write a script for my youtube video")]
+    [InlineData("crab with shell")]
+    public void Not_code(string request) => Assert.Null(CodeDetector.Detect(request));
+
+    [Fact]
+    public void The_page_sets_the_language_for_a_task() =>
+        Assert.Equal("Rust", CodeDetector.Detect("create and reverse a string", url: "play.rust-lang.org")?.Language);
+
+    [Fact]
+    public void The_request_beats_the_page() =>
+        Assert.Equal("Python", CodeDetector.Detect("reverse a string in python", url: "play.rust-lang.org")?.Language);
+
+    [Fact]
+    public void A_question_on_a_code_site_is_not_code() =>
+        Assert.Null(CodeDetector.Detect("what is a lifetime", url: "play.rust-lang.org"));
+
+    [Theory]
+    [InlineData("go.dev/play", "Go")]
+    [InlineData("typescriptlang.org/play", "TypeScript")]
+    [InlineData("onecompiler.com/rust", "Rust")]
+    [InlineData("programiz.com/python-programming/online-compiler", "Python")]
+    [InlineData("colab.research.google.com/drive/abc", "Python")]
+    public void Code_sites(string url, string language) =>
+        Assert.Equal(language, CodeDetector.Detect("sort a list of numbers", url: url)?.Language);
+
+    [Fact]
+    public void Site_without_a_fixed_language_leaves_it_to_the_model()
+    {
+        var c = CodeDetector.Detect("sort a list of numbers", url: "leetcode.com/problems/two-sum");
+        Assert.NotNull(c);
+        Assert.Null(c!.Language);
+    }
+
+    [Fact]
+    public void Page_title_when_the_address_is_unknown() =>
+        Assert.Equal("Rust", CodeDetector.Detect("create a vector of 5 numbers", title: "Rust Playground — Floorp")?.Language);
+
+    [Fact]
+    public void Not_code_on_an_ordinary_page() => Assert.Null(CodeDetector.Detect("create a packing list", url: "github.com/a/b"));
+
+    [Fact]
+    public void The_open_file_sets_the_language() =>
+        Assert.Equal("Python", CodeDetector.Detect("read a csv and sum the second column", extension: ".py")?.Language);
+
+    [Fact]
+    public void Generic_code_request_without_a_language()
+    {
+        var c = CodeDetector.Detect("write a function that checks for palindromes");
+        Assert.NotNull(c);
+        Assert.Null(c!.Language);
+    }
+}
+
+public class CodePromptTests
+{
+    [Theory]
+    [InlineData("short")]
+    [InlineData("sentence")]
+    [InlineData("paragraph")]
+    public void Code_asks_for_the_code_in_every_length(string length)
+    {
+        var cfg = new AppConfig { AnswerLength = length };
+        var line = Prompt.LengthInstruction(cfg, new CodeIntent("Rust", null));
+        Assert.Contains("write the actual code", line);
+        Assert.DoesNotContain("one word", line);
+        Assert.DoesNotContain("one line", line);
+    }
+
+    [Fact]
+    public void Code_in_a_terminal_stays_one_line() =>
+        Assert.Contains("single command line", Prompt.LengthInstruction(new AppConfig(), new CodeIntent("Bash", null), terminal: true));
+
+    [Fact]
+    public void Message_names_the_language_and_why()
+    {
+        var msg = Prompt.Build(new AppConfig(), "Context: x", "create and reverse a string", [], new CodeIntent("Rust", "the page is the Rust Playground"));
+        Assert.Contains("Code language here: Rust (the page is the Rust Playground)", msg);
+    }
+
+    [Fact]
+    public void System_prompt_says_do_it() => Assert.Contains("Never describe how to do it", AppConfig.DefaultSystemPrompt);
+
+    [Fact]
+    public void Examples_include_multi_line_code() => Assert.Contains(new AppConfig().Examples, e => e.Answer.Contains('\n'));
+}
+
+public class MultilineCleanerTests
+{
+    [Fact]
+    public void Keeps_indentation_and_blank_lines()
+    {
+        var raw = "```rust\nfn main() {\n    let s = \"hello\";\n\n    println!(\"{}\", s);\n}\n```";
+        Assert.Equal("fn main() {\n    let s = \"hello\";\n\n    println!(\"{}\", s);\n}", OutputCleaner.Clean(raw, singleLine: false));
+    }
+
+    [Fact]
+    public void Removes_shared_indentation_only() =>
+        Assert.Equal("if x:\n    y()", OutputCleaner.Clean("    if x:\n        y()", singleLine: false));
+
+    [Fact]
+    public void Keeps_first_line_indent_inside_a_fence() =>
+        Assert.Equal("a\n  b", OutputCleaner.Clean("```\na\n  b\n```", singleLine: false));
+
+    [Fact]
+    public void Single_line_mode_unchanged() => Assert.Equal("ls -la", OutputCleaner.Clean("$ ls -la\nmore", singleLine: true));
+}

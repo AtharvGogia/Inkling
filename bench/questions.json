@@ -8,7 +8,11 @@
     "sql":        { "app": "Visual Studio Code", "process": "Code", "title": "queries.sql - shop - Visual Studio Code" },
     "ts":         { "app": "Visual Studio Code", "process": "Code", "title": "validate.ts - web - Visual Studio Code" },
     "excel":      { "app": "Microsoft Excel", "process": "EXCEL", "title": "Budget.xlsx - Excel" },
-    "notepad":    { "app": "Notepad", "process": "Notepad", "title": "notes.txt - Notepad" }
+    "notepad":    { "app": "Notepad", "process": "Notepad", "title": "notes.txt - Notepad" },
+    "rustplay":   { "app": "Floorp", "process": "floorp", "title": "Rust Playground — Floorp", "url": "play.rust-lang.org" },
+    "goplay":     { "app": "Google Chrome", "process": "chrome", "title": "Go Playground - The Go Programming Language - Google Chrome", "url": "go.dev/play" },
+    "browser":    { "app": "Google Chrome", "process": "chrome", "title": "New Tab - Google Chrome", "url": "google.com" },
+    "csharp":     { "app": "Visual Studio Code", "process": "Code", "title": "Program.cs - api - Visual Studio Code" }
   },
   "questions": [
     { "domain": "Bash", "in": "bash", "q": "find files over 100mb in home", "expect": ["find\\s+(~|\\$HOME|/home)\\S*.*-size\\s+\\+100M"] },
@@ -65,6 +69,16 @@
 
     { "domain": "Language", "in": "notepad", "q": "fix the grammar: she dont like apples", "expect": ["she\\s+(doesn['’]?t|does\\s+not)\\s+like\\s+apples"] },
     { "domain": "Language", "in": "notepad", "q": "correct spelling of definately", "expect": ["\\bdefinitely\\b"] },
-    { "domain": "Language", "in": "notepad", "q": "plural of mouse", "expect": ["\\bmice\\b"] }
+    { "domain": "Language", "in": "notepad", "q": "plural of mouse", "expect": ["\\bmice\\b"] },
+
+    { "domain": "Code", "in": "rustplay", "q": "create and reverse a string", "maxChars": 600, "require": ["chars\\(\\)\\s*\\.rev\\(\\)|\\.rev\\(\\)", "collect|String::from|to_string|&str|let "], "expect": ["\\n"] },
+    { "domain": "Code", "in": "notepad", "q": "create and reverse a string in rust", "maxChars": 600, "require": ["\\.rev\\(\\)", "fn |let "], "expect": ["\\n"] },
+    { "domain": "Code", "in": "goplay", "q": "make an http get request and print the status", "maxChars": 900, "require": ["http\\.Get\\(", "Status"], "expect": ["\\n"] },
+    { "domain": "Code", "in": "python", "q": "read data.csv and print each row", "maxChars": 600, "require": ["csv\\.reader|DictReader|pandas|read_csv", "print"], "expect": ["\\n"] },
+    { "domain": "Code", "in": "js", "q": "write a debounce function", "maxChars": 900, "require": ["setTimeout", "clearTimeout"], "expect": ["\\n"] },
+    { "domain": "Code", "in": "csharp", "q": "group a list of orders by customer and sum the totals", "maxChars": 900, "require": ["GroupBy", "Sum\\("] },
+    { "domain": "Code", "in": "browser", "q": "typescript interface for a user with name, email and optional age", "maxChars": 600, "require": ["interface\\s+\\w+", "age\\?\\s*:"] },
+    { "domain": "Code", "in": "sql", "q": "top 5 customers by number of orders", "maxChars": 600, "require": ["COUNT\\(", "LIMIT\\s+5|TOP\\s*\\(?5"] },
+    { "domain": "Code", "in": "bash", "q": "loop over all .log files and print their names", "maxChars": 300, "require": ["for\\s+\\w+\\s+in|find\\s+.*\\.log|ls\\s+.*\\.log"] }
   ]
 }

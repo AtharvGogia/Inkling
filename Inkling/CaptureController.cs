@@ -43,7 +43,7 @@ internal sealed class CaptureController : IDisposable
     }
 
     /// <summary>The last answer typed, kept until the user does anything else, so it can be retried.</summary>
-    private sealed record LastAnswer(nint Hwnd, string Request, string Context, string Typed, List<string> Rejected);
+    private sealed record LastAnswer(nint Hwnd, string Request, string Context, string Typed, List<string> Rejected, CodeIntent? Code);
 
     private readonly Func<IAiBackend> _backend;
     private readonly Func<AppConfig> _config;
@@ -344,10 +344,14 @@ internal sealed class CaptureController : IDisposable
 
         string context;
         List<string> rejected;
+        CodeIntent? code;
+        // In a terminal Enter runs what's typed, so answers there stay on one line, code included.
+        bool terminal = cfg.SelectionSkipApps.Contains(process, StringComparer.OrdinalIgnoreCase);
         if (job.RetryOf is { } prev)
         {
             context = prev.Context;
             rejected = [.. prev.Rejected, prev.Typed];
+            code = prev.Code;
         }
         else
         {
@@ -363,15 +367,19 @@ internal sealed class CaptureController : IDisposable
                 _urlLookup = null;
             }
             var t = trace.Now;
-            context = ForegroundContext.Describe(_targetHwnd, cfg, url);
+            var where = ForegroundContext.Read(_targetHwnd, cfg, url);
+            context = ForegroundContext.Compose(where, cfg);
+            code = CodeDetector.Detect(job.Request, where.Url, cfg.SendWindowTitle ? where.Title : null, where.File?.Extension);
             trace.ContextMs = trace.Now - t;
             rejected = [];
         }
+        trace.Kind = code != null ? "code" : "text";
+        trace.Multiline = code != null && !terminal;
 
         // A snippet answers instantly; otherwise start the request, then swap our text for the dots while it runs.
         var snippet = job.RetryOf == null ? Snippets.Expand(cfg, job.Request) : null;
         if (snippet != null) trace.Backend = "snippet";
-        var message = Prompt.Build(cfg, context, job.Request, rejected);
+        var message = Prompt.Build(cfg, context, job.Request, rejected, code, terminal);
         var ask = snippet != null ? Task.FromResult(snippet) : backend.AskAsync(message, trace, cts.Token);
         bool erased = false;
         using var animCts = new CancellationTokenSource();
@@ -397,7 +405,7 @@ internal sealed class CaptureController : IDisposable
             var raw = await ask;
             trace.AnswerAtMs = trace.Now;
             var t = trace.Now;
-            answer = snippet ?? OutputCleaner.Clean(raw, cfg.SingleLine);
+            answer = snippet ?? OutputCleaner.Clean(raw, cfg.SingleLine && !trace.Multiline);
             trace.ParseMs += trace.Now - t;
             if (answer.Length == 0) failure = "Empty answer";
         }
@@ -477,9 +485,12 @@ internal sealed class CaptureController : IDisposable
             var t = trace.Now;
             await EraseShownAsync();
             trace.FinalEraseMs = trace.Now - t;
-            bool newlines = !cfg.SingleLine;
+            bool newlines = !cfg.SingleLine || trace.Multiline;
             t = trace.Now;
-            await InputSender.TypeTextAsync(answer!, newlinesAsEnter: newlines, _pace, _targetHwnd);
+            // Several lines (code) are pasted: editors would re-indent and auto-close brackets as each key arrives.
+            // The answer goes onto the clipboard for a moment; what was there is put back afterwards.
+            if (trace.Multiline && answer!.Contains('\n')) await InputSender.PasteTextAsync(answer, _targetHwnd);
+            else await InputSender.TypeTextAsync(answer!, newlinesAsEnter: newlines, _pace, _targetHwnd);
             trace.TypeMs = trace.Now - t;
             var typed = InputSender.AsTyped(answer!, newlines);
             trace.TypedChars = TextElements(typed);
@@ -488,7 +499,7 @@ internal sealed class CaptureController : IDisposable
 
             // Retrying would backspace over the answer; a multi-line one may have run things (Enter), so not those.
             if (snippet == null && !typed.Contains('\n') && CanEditTarget)
-                _last = new LastAnswer(_targetHwnd, job.Request, context, typed, rejected);
+                _last = new LastAnswer(_targetHwnd, job.Request, context, typed, rejected, code);
         }
         finally
         {

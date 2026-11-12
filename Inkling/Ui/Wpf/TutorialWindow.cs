@@ -74,6 +74,9 @@ internal sealed class TutorialWindow : Window
             new("5. Answer length", [
                 new Para("Short (a word or a command) is the default. For more, pick A sentence or two, or A paragraph, in the tray menu or Settings → General."),
                 new Para("With Keep answers on one line (Settings → Typing), longer answers stay on one line, so a terminal never gets an Enter it didn't ask for."),
+                new Sub("Code"),
+                new Para("Ask for code (\"create and reverse a string in rust\", \"python function that checks for primes\") and you get the code itself, on as many lines as it needs, whatever the length setting. On a code site such as the Rust Playground, or in a code file in your editor, you don't even need to name the language: \"create and reverse a string\" is enough."),
+                new Para("Code is pasted rather than typed, so the editor doesn't re-indent it. Your clipboard is put back right after, and the code stays out of clipboard history. In a terminal, code requests still get a single command."),
             ]),
             new("6. Snippets", [
                 new Para("Snippets are your own instant replies, with no model involved. Ask for a snippet's name and its text is typed straight away."),

@@ -56,7 +56,7 @@ internal static class SelectionReader
     }
 
     /// <summary>A copy of every format on the clipboard, so it can be put back after our Ctrl+C.</summary>
-    private static DataObject? Snapshot()
+    internal static DataObject? Snapshot()
     {
         try
         {
@@ -76,7 +76,7 @@ internal static class SelectionReader
         catch { return null; }
     }
 
-    private static void Restore(DataObject? saved)
+    internal static void Restore(DataObject? saved)
     {
         try
         {
@@ -86,7 +86,7 @@ internal static class SelectionReader
         catch (Exception ex) { Log.Write("Clipboard restore failed: " + ex.Message); }
     }
 
-    private static T? Retry<T>(Func<T> f)
+    internal static T? Retry<T>(Func<T> f)
     {
         for (int i = 0; ; i++)
         {

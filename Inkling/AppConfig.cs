@@ -80,6 +80,16 @@ public sealed class AppConfig
         new() { Hint = "a short plain-text answer (one word or a short phrase if possible)", Request = "capital of australia", Answer = "Canberra" },
         new() { Hint = "a short code snippet or command", Request = "python read json file into dict", Answer = "data = json.load(open(\"file.json\"))" },
         new() { Hint = "a short plain-text answer (one word or a short phrase if possible)", Request = "thank you in japanese", Answer = "ありがとう (arigatou)" },
+        new()
+        {
+            Hint = "a short code snippet or command", Request = "python function that checks if a number is prime",
+            Answer = "def is_prime(n):\n    if n < 2:\n        return False\n    for i in range(2, int(n ** 0.5) + 1):\n        if n % i == 0:\n            return False\n    return True",
+        },
+        new()
+        {
+            Hint = "a short plain-text answer (one word or a short phrase if possible)", Request = "write a polite reply declining the meeting",
+            Answer = "Thanks for the invite, but I won't be able to make it. Happy to catch up another time.",
+        },
     ];
 
     public string ClaudeModel { get; set; } = "haiku";
@@ -114,6 +124,14 @@ public sealed class AppConfig
     public string SystemPrompt { get; set; } = DefaultSystemPrompt;
 
     public const string DefaultSystemPrompt =
+        "You are an inline text replacer. The user's request will be replaced in place by your reply, " +
+        "so reply with ONLY the answer itself, at the length asked for. " +
+        "If the request asks you to write, create or do something (code, a message, a list, a translation), do it: " +
+        "reply with the finished result itself, complete and working. Never describe how to do it, and never just repeat or name the task. " +
+        "No explanation or preamble, no markdown, no code fences, no surrounding quotes, no leading '$'. Never use tools.";
+
+    /// <summary>The 0.3-0.4.5 default, without the "do it" rule.</summary>
+    private const string PreviousSystemPrompt =
         "You are an inline text replacer. The user's request will be replaced in place by your reply, " +
         "so reply with ONLY the answer itself, at the length asked for. " +
         "No explanation or preamble, no markdown, no code fences, no surrounding quotes, no leading '$'. Never use tools.";
@@ -162,7 +180,11 @@ public sealed class AppConfig
             {
                 var text = File.ReadAllText(FilePath);
                 var loaded = JsonSerializer.Deserialize<AppConfig>(text, Json) ?? new AppConfig();
-                if (loaded.SystemPrompt == OldSystemPrompt) loaded.SystemPrompt = DefaultSystemPrompt;
+                if (loaded.SystemPrompt is OldSystemPrompt or PreviousSystemPrompt) loaded.SystemPrompt = DefaultSystemPrompt;
+                // Few-shot examples added in later versions (matched by request text).
+                foreach (var ex in new AppConfig().Examples)
+                    if (!loaded.Examples.Any(e => e.Request.Equals(ex.Request, StringComparison.OrdinalIgnoreCase)))
+                        loaded.Examples.Add(ex);
                 // Per-app hints added in later versions, for configs saved before they existed.
                 foreach (var rule in new AppConfig().Contexts)
                     if (!loaded.Contexts.Any(c => c.Process.Equals(rule.Process, StringComparison.OrdinalIgnoreCase)

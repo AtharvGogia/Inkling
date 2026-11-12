@@ -91,6 +91,12 @@ Save phrases of your own in Settings → Snippets. Ask for one and it's typed in
 
 Short (a word or a command, the default), a sentence or two, or a paragraph: in the tray menu or Settings.
 
+### Code
+
+Ask for code and you get the code itself, on as many lines as it needs, whatever the answer length: "create and reverse a string in rust", "python function that checks for primes", "debounce in js". Inkling also knows the language from where you are: on the [Rust Playground](https://play.rust-lang.org/), "create and reverse a string" gives Rust; in a `.py` file in your editor, it gives Python. A language you name always wins.
+
+Code is pasted in rather than typed, so editors don't re-indent it or add extra brackets as it arrives. Inkling puts your clipboard back right after, and the pasted code stays out of clipboard history. In a terminal, where every Enter runs a line, code requests still get a single command.
+
 ## Settings
 
 Click the tray icon. Changes apply straight away.
@@ -182,7 +188,7 @@ Any other option prints this list instead of starting Inkling.
 dotnet test Inkling.Tests
 ```
 
-108 unit tests: the risky-command rules, snippets, answer cleaning, shortcut parsing, the prompt, per-app hints, update tags, the corner badge, reading the open file from window titles, trimming page addresses, and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
+149 unit tests: the risky-command rules, snippets, answer cleaning (including keeping code indentation), spotting code requests and code sites, shortcut parsing, the prompt, per-app hints, update tags, the corner badge, reading the open file from window titles, trimming page addresses, and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
 
 ## How it's put together
 

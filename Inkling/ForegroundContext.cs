@@ -49,15 +49,23 @@ internal static class ForegroundContext
         return cfg.DefaultHint;
     }
 
-    /// <summary>The context block sent to the model with every request. <paramref name="url"/> comes from
-    /// <see cref="BrowserUrl"/>; the open file's name is read from the title here.</summary>
-    public static string Describe(nint hwnd, AppConfig cfg, string? url = null)
+    /// <summary>Where the answer goes: the app, its window title, and the page or file that's open (if allowed).</summary>
+    public sealed record Where(string App, string Process, string Title, string? Url, OpenFile.Result? File);
+
+    /// <summary>Reads <see cref="Where"/> for a window. <paramref name="url"/> comes from <see cref="BrowserUrl"/>;
+    /// the open file's name is read from the title here.</summary>
+    public static Where Read(nint hwnd, AppConfig cfg, string? url = null)
     {
         var process = ProcessName(hwnd);
         var title = GetWindowTitle(hwnd).Trim();
         var file = cfg.SendOpenItem && !BrowserUrl.IsBrowser(process) && !BrowserUrl.IsPrivate(title) ? OpenFile.FromTitle(process, title) : null;
-        return Compose(FriendlyName(hwnd, process), process, title, cfg, cfg.SendOpenItem ? url : null, file);
+        return new Where(FriendlyName(hwnd, process), process, title, cfg.SendOpenItem ? url : null, file);
     }
+
+    /// <summary>The context block sent to the model with every request.</summary>
+    public static string Describe(nint hwnd, AppConfig cfg, string? url = null) => Compose(Read(hwnd, cfg, url), cfg);
+
+    public static string Compose(Where w, AppConfig cfg) => Compose(w.App, w.Process, w.Title, cfg, w.Url, w.File);
 
     /// <summary>The context block for a given app, process and window title (also used by --bench).</summary>
     public static string Compose(string app, string process, string title, AppConfig cfg, string? url = null, OpenFile.Result? file = null)

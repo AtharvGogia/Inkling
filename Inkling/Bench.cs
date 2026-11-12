@@ -8,12 +8,13 @@ namespace Inkling;
 
 /// <summary>
 /// Benchmark through the real request path (system prompt, examples, app context, streaming, answer cleaning):
-///   Inkling.exe --bench [--questions bench\questions.json] [--out bench\results] model1 [model2 ...]
+///   Inkling.exe --bench [--questions bench\questions.json] [--out bench\results] [--length short|sentence|paragraph] model1 [model2 ...]
 /// A model is a NIM model id, or "claude" / "agy" for the CLI backends. Writes a Markdown report.
 /// </summary>
 internal static class Bench
 {
-    private sealed record App(string Name, string Process, string Title);
+    /// <summary>An app the question is typed in; <see cref="Url"/> is the page address for a browser.</summary>
+    private sealed record App(string Name, string Process, string Title, string? Url);
     private sealed record Question(string Domain, string In, string Q, string[] Expect, string[] Require, int MaxChars);
     private sealed record Result(string Model, Question Q, string Answer, bool Correct, bool FormatOk, string? Error,
         double FirstMs, double TotalMs, int ReasoningChars);
@@ -23,9 +24,11 @@ internal static class Bench
         string questionsPath = Path.Combine("bench", "questions.json");
         string outDir = Path.Combine("bench", "results");
         var models = new List<string>();
+        string length = "short";
         for (int i = 1; i < args.Length; i++)
         {
             if (args[i] == "--questions" && i + 1 < args.Length) questionsPath = args[++i];
+            else if (args[i] == "--length" && i + 1 < args.Length) length = Prompt.NormalizeLength(args[++i]);
             else if (args[i] == "--out" && i + 1 < args.Length) outDir = args[++i];
             else models.Add(args[i]);
         }
@@ -39,7 +42,7 @@ internal static class Bench
         {
             var cfg = JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(baseCfg))!; // independent copy
             cfg.SingleLine = true;
-            cfg.AnswerLength = "short";
+            cfg.AnswerLength = length;
             if (model is "claude" or "agy") cfg.Backend = model;
             else { cfg.Backend = "nim"; cfg.NimModel = model; }
             bool api = cfg.Backend == "nim";
@@ -78,17 +81,23 @@ internal static class Bench
     private static Result Ask(IAiBackend backend, AppConfig cfg, string model, Question q, App app)
     {
         var trace = new RequestTrace();
-        var message = Prompt.Build(cfg, ForegroundContext.Compose(app.Name, app.Process, app.Title, cfg), q.Q, []);
+        // The same context and code detection as a real request in that app.
+        var file = BrowserUrl.IsBrowser(app.Process) ? null : OpenFile.FromTitle(app.Process, app.Title);
+        var where = new ForegroundContext.Where(app.Name, app.Process, app.Title, app.Url, file);
+        var code = CodeDetector.Detect(q.Q, app.Url, app.Title, file?.Extension);
+        bool terminal = cfg.SelectionSkipApps.Contains(app.Process, StringComparer.OrdinalIgnoreCase);
+        trace.Multiline = code != null && !terminal;
+        var message = Prompt.Build(cfg, ForegroundContext.Compose(where, cfg), q.Q, [], code, terminal);
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
             var raw = backend.AskAsync(message, trace, cts.Token).GetAwaiter().GetResult();
-            var answer = OutputCleaner.Clean(raw, singleLine: true);
+            var answer = OutputCleaner.Clean(raw, singleLine: !trace.Multiline);
             double total = trace.ResultMs;
             bool correct = answer.Length > 0
                 && (q.Expect.Length == 0 || q.Expect.Any(p => Regex.IsMatch(answer, p, RegexOptions.IgnoreCase)))
                 && q.Require.All(p => Regex.IsMatch(answer, p, RegexOptions.IgnoreCase));
-            bool formatOk = answer.Length > 0 && answer.Length <= q.MaxChars && !raw.Contains("```")
+            bool formatOk = answer.Length > 0 && answer.Length <= q.MaxChars && (trace.Multiline || !raw.Contains("```"))
                 && !Regex.IsMatch(answer, @"^(sure|here|certainly|the answer|to \w+ )", RegexOptions.IgnoreCase);
             return new Result(model, q, answer, correct, formatOk, answer.Length == 0 ? "empty answer" : null,
                 trace.FirstOutputMs, total, trace.ReasoningChars);
@@ -105,7 +114,8 @@ internal static class Bench
         using var doc = JsonDocument.Parse(File.ReadAllText(path));
         var apps = doc.RootElement.GetProperty("apps").EnumerateObject().ToDictionary(
             p => p.Name,
-            p => new App(p.Value.GetProperty("app").GetString()!, p.Value.GetProperty("process").GetString()!, p.Value.GetProperty("title").GetString()!));
+            p => new App(p.Value.GetProperty("app").GetString()!, p.Value.GetProperty("process").GetString()!, p.Value.GetProperty("title").GetString()!,
+                p.Value.TryGetProperty("url", out var u) ? u.GetString() : null));
         static string[] Arr(JsonElement e, string name) =>
             e.TryGetProperty(name, out var a) ? a.EnumerateArray().Select(x => x.GetString()!).ToArray() : [];
         var qs = doc.RootElement.GetProperty("questions").EnumerateArray().Select(e => new Question(
