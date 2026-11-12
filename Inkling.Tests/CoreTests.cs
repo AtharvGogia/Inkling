@@ -216,3 +216,98 @@ public class BenchQuestionTests
                         _ = new Regex(p.GetString()!);
     }
 }
+
+public class OpenFileTests
+{
+    [Theory]
+    [InlineData("WINWORD", "report.docx - Word", "report.docx")]
+    [InlineData("WINWORD", "report - Word", "report.docx")]                       // extension hidden by Windows
+    [InlineData("WINWORD", "report - Compatibility Mode - Word", "report.docx")]
+    [InlineData("EXCEL", "budget.xlsx - Excel", "budget.xlsx")]
+    [InlineData("EXCEL", "data.csv - Excel", "data.csv")]
+    [InlineData("POWERPNT", "deck - PowerPoint", "deck.pptx")]
+    [InlineData("Notepad", "*notes.ps1 - Notepad", "notes.ps1")]                   // unsaved marker
+    [InlineData("Code", "● app.py - project - Visual Studio Code", "app.py")]
+    [InlineData("notepad++", @"*C:\Users\me\secret\todo.txt - Notepad++", "todo.txt")]   // never the folder
+    [InlineData("Photoshop", "logo.psd @ 66.7% (RGB/8#)", "logo.psd")]
+    [InlineData("Acrobat", "manual.pdf - Adobe Acrobat Reader (64-bit)", "manual.pdf")]
+    public void Reads_the_file_name(string process, string title, string expected) =>
+        Assert.Equal(expected, OpenFile.FromTitle(process, title)?.Name);
+
+    [Theory]
+    [InlineData("WINWORD", "Document1 - Word")]
+    [InlineData("EXCEL", "Book2 - Excel")]
+    [InlineData("Notepad", "Untitled - Notepad")]
+    public void New_documents_are_unsaved(string process, string title)
+    {
+        var r = OpenFile.FromTitle(process, title);
+        Assert.True(r is { Unsaved: true, Name: null });
+        Assert.Equal("a new, unsaved document", r!.Describe());
+    }
+
+    [Theory]
+    [InlineData("Discord", "#general - Discord")]
+    [InlineData("Spotify", "Spotify Premium")]
+    [InlineData("Code", "Welcome - Visual Studio Code")]
+    [InlineData("Outlook", "Re: report.docx - Outlook")]                           // a subject line, not a file
+    [InlineData("Notepad", "")]
+    public void No_file_when_the_title_names_none(string process, string title) =>
+        Assert.Null(OpenFile.FromTitle(process, title));
+
+    [Fact]
+    public void Describes_the_type() =>
+        Assert.Equal("file \"notes.ps1\" (a PowerShell script)", OpenFile.FromTitle("Notepad", "notes.ps1 - Notepad")!.Describe());
+
+    [Fact]
+    public void Extension_rules_beat_app_rules()
+    {
+        var cfg = new AppConfig();
+        Assert.Contains("Python", ForegroundContext.HintFor("Code", "app.py - x - Visual Studio Code", cfg, ".py"));
+        Assert.Contains("snippet or command", ForegroundContext.HintFor("Code", "readme.md - x - Visual Studio Code", cfg, ".md"));
+        Assert.Contains("PowerShell", ForegroundContext.HintFor("Notepad", "a.ps1 - Notepad", cfg, ".ps1"));
+    }
+
+    [Fact]
+    public void Context_names_the_file_and_page_only_when_given()
+    {
+        var cfg = new AppConfig();
+        var withFile = ForegroundContext.Compose("Notepad", "Notepad", "a.ps1 - Notepad", cfg, file: OpenFile.FromTitle("Notepad", "a.ps1 - Notepad"));
+        Assert.Contains("file \"a.ps1\" (a PowerShell script)", withFile);
+        var withUrl = ForegroundContext.Compose("Firefox", "firefox", "Issues", cfg, url: "github.com/a/b/issues");
+        Assert.Contains("page \"github.com/a/b/issues\"", withUrl);
+        Assert.DoesNotContain("page \"", ForegroundContext.Compose("Firefox", "firefox", "Issues", cfg));
+    }
+}
+
+public class BrowserUrlTests
+{
+    [Theory]
+    [InlineData("https://github.com/a/b/issues/3?q=secret#top", "github.com/a/b/issues/3")]
+    [InlineData("github.com/a/b", "github.com/a/b")]                               // scheme hidden by the browser
+    [InlineData("https://www.example.com/", "example.com")]
+    [InlineData("http://localhost:5173/app?token=abc", "localhost:5173/app")]
+    [InlineData("https://mail.example.com/reset?code=123456", "mail.example.com/reset")]
+    public void Keeps_site_and_path_only(string raw, string expected) =>
+        Assert.Equal(expected, BrowserUrl.Clean(raw));
+
+    [Theory]
+    [InlineData("chrome://settings")]
+    [InlineData("about:blank")]
+    [InlineData("edge://newtab")]
+    [InlineData("file:///C:/Users/me/a.pdf")]
+    [InlineData("how to center a div")]                                             // search text being typed
+    [InlineData("")]
+    [InlineData(null)]
+    public void Ignores_anything_but_web_pages(string? raw) => Assert.Null(BrowserUrl.Clean(raw));
+
+    [Fact]
+    public void Long_paths_are_cut() =>
+        Assert.True(BrowserUrl.Clean("https://example.com/" + new string('a', 400))!.Length <= 151);
+
+    [Theory]
+    [InlineData("New Tab - Profile 1 - Microsoft Edge InPrivate", true)]
+    [InlineData("Google - Google Chrome (Incognito)", true)]
+    [InlineData("Mozilla Firefox Private Browsing", true)]
+    [InlineData("GitHub - Floorp", false)]
+    public void Spots_private_windows(string title, bool expected) => Assert.Equal(expected, BrowserUrl.IsPrivate(title));
+}

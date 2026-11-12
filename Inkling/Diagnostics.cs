@@ -26,6 +26,10 @@ public sealed class RequestTrace
     public int SelectionChars { get; set; }
     /// <summary>Reading the app name, window title and hint.</summary>
     public double ContextMs { get; set; }
+    /// <summary>Waiting for the browser's page address after Enter (-1 = not a lookup).</summary>
+    public double UrlMs { get; set; } = -1;
+    public bool UrlFound { get; set; }
+    public bool UrlTimedOut { get; set; }
     public int PromptChars { get; set; }
 
     // CLI
@@ -98,6 +102,7 @@ public sealed class RequestTrace
 
         sb.AppendLine("  Before sending");
         if (SelectionMs >= 0) Row("copy selection (select-to-ask)", SelectionMs, $"{SelectionChars} chars");
+        if (UrlMs >= 0) Row("page address (wait after Enter)", UrlMs, UrlTimedOut ? "not ready in 150 ms: sent without it" : UrlFound ? "found" : "none (not a web page, or private)");
         Row("context (app, title, hint)", ContextMs);
         bool cli = SpawnMs >= 0;
         if (cli) Row("waiting for the CLI to be free", GateWaitMs);

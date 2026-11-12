@@ -58,6 +58,8 @@ internal sealed class CaptureController : IDisposable
     private nint _targetHwnd;
     private readonly StringBuilder _buffer = new();
     private CancellationTokenSource? _requestCts;
+    /// <summary>The browser's page address, read while the request is typed (null for other apps).</summary>
+    private Task<string?>? _urlLookup;
     private Job? _pending;
     private LastAnswer? _last;
     /// <summary>Set when the user typed/clicked while we were waiting: the screen no longer matches the buffer.</summary>
@@ -225,6 +227,7 @@ internal sealed class CaptureController : IDisposable
         _state = State.Capturing;
         _overlay.ShowListening(_targetHwnd, 0);
         _backend().Warm(); // API backend: opens the HTTPS connection while you type
+        _urlLookup = _config().SendOpenItem ? BrowserUrl.StartLookup(_targetHwnd) : null;
     }
 
     private void BeginRetry(LastAnswer last)
@@ -250,6 +253,7 @@ internal sealed class CaptureController : IDisposable
         _requestCts = new CancellationTokenSource(TimeSpan.FromSeconds(_config().TimeoutSeconds));
         var trace = new RequestTrace();
         _backend().Warm();
+        _urlLookup = _config().SendOpenItem ? BrowserUrl.StartLookup(_targetHwnd) : null;
         _ui.BeginInvoke(() => _ = RunSelectionAsync(trace));
     }
 
@@ -347,8 +351,19 @@ internal sealed class CaptureController : IDisposable
         }
         else
         {
+            // The page address was looked up while the request was typed; wait for it only briefly.
+            string? url = null;
+            if (_urlLookup is { } lookup)
+            {
+                var u = trace.Now;
+                if (lookup.IsCompleted || await Task.WhenAny(lookup, Task.Delay(150)) == lookup) url = lookup.Result;
+                else trace.UrlTimedOut = true;
+                trace.UrlMs = trace.Now - u;
+                trace.UrlFound = url != null;
+                _urlLookup = null;
+            }
             var t = trace.Now;
-            context = ForegroundContext.Describe(_targetHwnd, cfg);
+            context = ForegroundContext.Describe(_targetHwnd, cfg, url);
             trace.ContextMs = trace.Now - t;
             rejected = [];
         }

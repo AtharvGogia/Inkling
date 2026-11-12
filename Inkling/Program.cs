@@ -28,6 +28,7 @@ internal static class Program
             catch (Exception ex) { Console.WriteLine("Check failed: " + ex.Message); return 1; }
         }
         if (args.Length >= 1 && args[0] == "--caret-test") { AttachConsole(-1); return Ui.CaretLocator.SelfTest(args.Length > 1 && int.TryParse(args[1], out var sec) ? sec : 15); }
+        if (args.Length >= 1 && args[0] == "--url-test") { AttachConsole(-1); return BrowserUrl.SelfTest(args.Length > 1 && int.TryParse(args[1], out var us) ? us : 15); }
         if (args.Length >= 1 && args[0] == "--risk-test") { AttachConsole(-1); return RiskSelfTest(); }
         if (args.Length >= 1 && args[0] == "--bench") { AttachConsole(-1); return Bench.Run(args); }
         // Build helper: regenerate Assets\inkling.ico from the drawing code.
@@ -49,6 +50,7 @@ internal static class Program
                   --risk-test                                check the risky-command rules
                   --check-update                             ask GitHub for the latest release
                   --caret-test [seconds]                     print where the caret is found, once a second
+                  --url-test [seconds]                       print the browser page address found, once a second
                   --render-ui <folder> [light|dark]          pictures of the Settings tabs and welcome window
                   --render-media <folder>                    render the README GIFs (needs FFmpeg)
                   --write-icon <file.ico>                    write the app icon

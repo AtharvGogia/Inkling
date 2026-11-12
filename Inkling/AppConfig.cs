@@ -9,6 +9,8 @@ public sealed class ContextRule
     public string Process { get; set; } = "";
     /// <summary>Optional case-insensitive substring of the window title. Empty = any title.</summary>
     public string TitleContains { get; set; } = "";
+    /// <summary>Optional extension of the open file (".ps1"). Rules with one are checked first. Empty = any file.</summary>
+    public string Extension { get; set; } = "";
     /// <summary>Text added to the prompt describing what kind of answer fits here.</summary>
     public string Hint { get; set; } = "";
 }
@@ -100,6 +102,9 @@ public sealed class AppConfig
     public bool ThinkingDots { get; set; } = true;
     /// <summary>Include the target window's title in the context sent to the model (helps relevance; may contain private text).</summary>
     public bool SendWindowTitle { get; set; } = true;
+    /// <summary>Include the page address in browsers (site and path only) or the open file's name elsewhere (no folder).
+    /// Never in private windows.</summary>
+    public bool SendOpenItem { get; set; } = true;
     /// <summary>Pause between typed keys, in ms. Lower is faster; too low and some apps (WinUI Notepad) mix up characters.</summary>
     public int TypingDelayMs { get; set; } = 5;
     /// <summary>Apps (process names) that drop fast injected keys, and the slower pace used for them.</summary>
@@ -133,6 +138,11 @@ public sealed class AppConfig
         new() { Process = "cmd", Hint = "a single cmd.exe command for Windows" },
         new() { Process = "Code", Hint = "a short code snippet or command" },
         new() { Process = "EXCEL", Hint = "a spreadsheet formula starting with = (or a short value)" },
+        new() { Extension = ".ps1", Hint = "PowerShell code (a single command or a short snippet)" },
+        new() { Extension = ".sh", Hint = "bash code (a single command or a short snippet)" },
+        new() { Extension = ".py", Hint = "Python code (a short snippet)" },
+        new() { Extension = ".sql", Hint = "a SQL query" },
+        new() { Extension = ".csv", Hint = "comma-separated values that fit the file's columns" },
     ];
 
     [JsonIgnore]
@@ -155,7 +165,8 @@ public sealed class AppConfig
                 if (loaded.SystemPrompt == OldSystemPrompt) loaded.SystemPrompt = DefaultSystemPrompt;
                 // Per-app hints added in later versions, for configs saved before they existed.
                 foreach (var rule in new AppConfig().Contexts)
-                    if (!loaded.Contexts.Any(c => c.Process.Equals(rule.Process, StringComparison.OrdinalIgnoreCase)))
+                    if (!loaded.Contexts.Any(c => c.Process.Equals(rule.Process, StringComparison.OrdinalIgnoreCase)
+                                                  && c.Extension.Equals(rule.Extension, StringComparison.OrdinalIgnoreCase)))
                         loaded.Contexts.Add(rule);
                 loaded.AnswerLength = Ai.Prompt.NormalizeLength(loaded.AnswerLength);
                 // Add settings introduced by newer versions to the file, so they're visible when editing it.

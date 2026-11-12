@@ -127,7 +127,9 @@ The free key allows about 40 requests a minute. Inkling stays under that and tel
 
 ## Privacy
 
-Each request sends your request (or selected text), the app's name, the answer length and, if that option is on, the window title, to NVIDIA's API, which answers it. Inkling has no server of its own and collects nothing.
+Each request sends your request (or selected text), the app's name, the answer length and, if those options are on, the window title and what's open, to NVIDIA's API, which answers it. Inkling has no server of its own and collects nothing.
+
+- **What's open:** in a browser, the page's address, cut down to the site and page (`github.com/AtharvGogia/Inkling-for-Windows/issues`); the part after `?` or `#`, where search terms and tokens live, is never sent. In other apps, the name of the open file (`report.docx`, `notes.ps1`), read from the window title, never its folder. Nothing is sent from private, Incognito or InPrivate windows. Turn it off in Settings → Privacy.
 
 - Your API key is kept in Windows Credential Manager, never in a file.
 - The log (`%APPDATA%\Inkling\inkling.log`) holds only timings and errors, never what you typed or the answer.
@@ -164,6 +166,8 @@ Developer options of `Inkling.exe`:
 | `--ask nim\|claude\|agy "request" ["hint"]` | Asks three times and prints the timing of every step |
 | `--bench model1 [model2 …]` | Runs the benchmark and writes a report to `bench/results` |
 | `--risk-test` | Checks the risky-command rules against sample commands |
+| `--caret-test [seconds]` | Once a second, where the text caret is found in the window in front (sends no input) |
+| `--url-test [seconds]` | Once a second, the page address read from the browser in front, as it would be sent |
 | `--check-update` | Asks GitHub for the latest release |
 | `--render-ui <folder> [light\|dark]` | Saves pictures of the Settings tabs and the welcome window |
 | `--render-media <folder>` | Renders the README GIFs (mock scenes drawn frame by frame, encoded with FFmpeg) |
@@ -178,7 +182,7 @@ Any other option prints this list instead of starting Inkling.
 dotnet test Inkling.Tests
 ```
 
-69 unit tests: the risky-command rules, snippets, answer cleaning, shortcut parsing, the prompt, per-app hints, update tags, the corner badge and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
+108 unit tests: the risky-command rules, snippets, answer cleaning, shortcut parsing, the prompt, per-app hints, update tags, the corner badge, reading the open file from window titles, trimming page addresses, and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
 
 ## How it's put together
 

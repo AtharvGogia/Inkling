@@ -214,7 +214,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         sb.AppendLine($"Inkling {AppInfo.Version} on {Environment.OSVersion} ({(Environment.Is64BitProcess ? "x64" : "x86")})");
         sb.AppendLine($"Using: {Describe(_config)} [{_config.Backend}, {_config.NimModel}], API key: {Secrets.NimKeySource() ?? "none"}");
         sb.AppendLine($"Shortcuts: ask {_config.Hotkey}, selection {(_config.SelectionHotkey.Length > 0 ? _config.SelectionHotkey : "off")}, retry {(_config.RetryHotkey.Length > 0 ? _config.RetryHotkey : "off")}");
-        sb.AppendLine($"Length {_config.AnswerLength}, single line {_config.SingleLine}, dots {_config.ThinkingDots}, indicator {_config.Indicator}, typing {_config.TypingDelayMs}/{_config.SlowAppDelayMs} ms, risk guard {_config.RiskGuard}, window titles {_config.SendWindowTitle}");
+        sb.AppendLine($"Length {_config.AnswerLength}, single line {_config.SingleLine}, dots {_config.ThinkingDots}, indicator {_config.Indicator}, typing {_config.TypingDelayMs}/{_config.SlowAppDelayMs} ms, risk guard {_config.RiskGuard}, window titles {_config.SendWindowTitle}, page/file {_config.SendOpenItem}");
         sb.AppendLine($"Off in: {string.Join(", ", _config.DisabledApps)}; slow apps: {string.Join(", ", _config.SlowApps)}");
         sb.AppendLine(Diagnostics.Summary().Replace("\r\n", "\n").Trim());
         sb.AppendLine("--- last log lines ---");

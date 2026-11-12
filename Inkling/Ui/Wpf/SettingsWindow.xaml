@@ -182,6 +182,8 @@
                             <TextBlock Text="Sent with each request" Style="{StaticResource Section}" />
                             <CheckBox x:Name="TitleCheck" Content="The window title" />
                             <TextBlock Text="Helps answers fit (the folder in a terminal, the file in an editor). Your request and the app's name are always sent. Nothing you type is logged." Style="{StaticResource Hint}" Margin="28,2,0,0" />
+                            <CheckBox x:Name="OpenItemCheck" Content="The page address or the open file's name" Margin="0,10,0,0" />
+                            <TextBlock Text="In a browser, the site and page (never the part after ? or #). In other apps, the file's name, never its folder. Never sent from private windows." Style="{StaticResource Hint}" Margin="28,2,0,0" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

@@ -74,6 +74,7 @@ internal sealed partial class SettingsWindow : Window
         RiskCheck.Click += (_, _) => Set(c => c.RiskGuard = RiskCheck.IsChecked == true);
         DisabledApps.Changed += list => Set(c => c.DisabledApps = list);
         TitleCheck.Click += (_, _) => Set(c => c.SendWindowTitle = TitleCheck.IsChecked == true);
+        OpenItemCheck.Click += (_, _) => Set(c => c.SendOpenItem = OpenItemCheck.IsChecked == true);
         SnippetList.Changed += list => Set(c => c.Snippets = list);
         UpdatesCheck.Click += (_, _) => Set(c => c.CheckForUpdates = UpdatesCheck.IsChecked == true);
 
@@ -114,6 +115,7 @@ internal sealed partial class SettingsWindow : Window
             RiskCheck.IsChecked = _cfg.RiskGuard;
             DisabledApps.Items = _cfg.DisabledApps;
             TitleCheck.IsChecked = _cfg.SendWindowTitle;
+            OpenItemCheck.IsChecked = _cfg.SendOpenItem;
             SnippetList.Items = _cfg.Snippets;
             UpdatesCheck.IsChecked = _cfg.CheckForUpdates;
             UpdateStatus.Text = $"You have {AppInfo.Version}.";
@@ -304,7 +306,7 @@ internal sealed partial class SettingsWindow : Window
         _cfg.Backend = d.Backend; _cfg.NimModel = d.NimModel;
         _cfg.Indicator = d.Indicator; _cfg.ThinkingDots = d.ThinkingDots;
         _cfg.TypingDelayMs = d.TypingDelayMs; _cfg.SlowAppDelayMs = d.SlowAppDelayMs; _cfg.SingleLine = d.SingleLine;
-        _cfg.RiskGuard = d.RiskGuard; _cfg.SendWindowTitle = d.SendWindowTitle; _cfg.CheckForUpdates = d.CheckForUpdates;
+        _cfg.RiskGuard = d.RiskGuard; _cfg.SendWindowTitle = d.SendWindowTitle; _cfg.SendOpenItem = d.SendOpenItem; _cfg.CheckForUpdates = d.CheckForUpdates;
         Commit();
         LoadFromConfig();
         Theme.ApplyTo(this, _cfg.Theme);

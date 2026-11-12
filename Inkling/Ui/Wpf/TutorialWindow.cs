@@ -88,7 +88,8 @@ internal sealed class TutorialWindow : Window
                 new Note("You can turn this off in Settings → Privacy, but it's worth keeping: answers come from a language model and can be wrong."),
             ]),
             new("8. Privacy and apps to skip", [
-                new Para("Each request sends your request (or selected text), the app's name and, if that option is on, the window title, to NVIDIA's API. Inkling has no server of its own and collects nothing."),
+                new Para("Each request sends your request (or selected text), the app's name and, if those options are on, the window title and what's open: the page's address in a browser (just the site and page, never the part after ? or #), or the file's name in other apps (never its folder). Nothing from private browser windows. It all goes to NVIDIA's API; Inkling has no server of its own and collects nothing."),
+                new Para("Both options are in Settings → Privacy, under Sent with each request."),
                 new Para("The keyboard hook sees every key press (that's how it spots the shortcut), but only what you type after the shortcut is kept, in memory, and never written anywhere. The log holds timings and errors, not text."),
                 new Sub("Turn Inkling off in some apps"),
                 new Para("In Settings → Privacy, under Turned off in, add apps where Inkling's shortcuts should do nothing: password managers (KeePass, 1Password and Bitwarden are there already), games, remote desktops."),
