@@ -59,17 +59,35 @@ public sealed class AppConfig
     /// <summary>Right after an answer is typed: erase it and ask again for a different one. Passed through to the app when there's nothing to retry.</summary>
     public string RetryHotkey { get; set; } = "Ctrl+Alt+R";
     /// <summary>Select text, press this: the selection is the request and the answer replaces it. Empty = off.</summary>
-    public string SelectionHotkey { get; set; } = "Ctrl+Alt+Enter";
+    public string SelectionHotkey { get; set; } = "Ctrl+Alt+W";
+    /// <summary>Rewrite the selected text with an instruction you type ("make it formal"). Empty = off.</summary>
+    public string RewriteHotkey { get; set; } = "Ctrl+Alt+Enter";
+    /// <summary>Type longer answers (sentence, paragraph) while the model is still writing them.</summary>
+    public bool StreamAnswers { get; set; } = true;
     public int MaxSelectionChars { get; set; } = 4000;
     /// <summary>Apps where select-to-ask is refused: terminals don't replace a selection when you type, and Ctrl+C can interrupt the shell.</summary>
+    /// <summary>
+    /// Editors with a built-in terminal that Inkling can't tell apart from the editor (same process): answers there stay
+    /// on one line, code included, since several lines pasted into a shell could run. Terminals are always one line.
+    /// </summary>
+    public List<string> OneLineApps { get; set; } = ["Code", "Code - Insiders", "Cursor", "Windsurf", "VSCodium"];
+
+    /// <summary>Whether answers in this app must stay on one line: a terminal, or an editor that may be showing one.</summary>
+    public bool OneLineOnly(string process) =>
+        SelectionSkipApps.Contains(process, StringComparer.OrdinalIgnoreCase) || OneLineApps.Contains(process, StringComparer.OrdinalIgnoreCase);
+
     public List<string> SelectionSkipApps { get; set; } =
         ["WindowsTerminal", "OpenConsole", "conhost", "cmd", "powershell", "pwsh", "wsl", "ubuntu", "mintty", "putty", "alacritty", "wezterm-gui", "WarpTerminal"];
-    /// <summary>"nim" (direct API, no CLI), "claude" or "agy".</summary>
+    /// <summary>"nim" (NVIDIA's API), "local" (a model on this PC: Ollama, LM Studio), "claude" or "agy".</summary>
     public string Backend { get; set; } = "nim";
 
     /// <summary>Any OpenAI-compatible endpoint works (e.g. http://localhost:11434/v1 for Ollama). The key lives in Windows Credential Manager or NVIDIA_API_KEY.</summary>
     public string NimBaseUrl { get; set; } = "https://integrate.api.nvidia.com/v1";
     public string NimModel { get; set; } = "nvidia/nemotron-3.5-bolt-e4b";
+    /// <summary>An OpenAI-compatible server on this PC. Ollama: http://localhost:11434/v1, LM Studio: http://localhost:1234/v1.</summary>
+    public string LocalBaseUrl { get; set; } = "http://localhost:11434/v1";
+    /// <summary>The local model's id as the server lists it ("llama3.1:latest"). Empty until picked in Settings.</summary>
+    public string LocalModel { get; set; } = "";
     /// <summary>Client-side cap matching the key's rate limit, so a burst fails fast instead of waiting on a 429.</summary>
     public int NimRequestsPerMinute { get; set; } = 38;
     /// <summary>Few-shot examples for the API backend: how answers should look. Edit these to tune the style.</summary>
@@ -102,6 +120,10 @@ public sealed class AppConfig
     /// <summary>Requests one warm CLI process answers before a fresh one replaces it. 1 = every request is independent (no chat history); the next process is started in the background right away.</summary>
     public int RequestsPerProcess { get; set; } = 1;
     public int TimeoutSeconds { get; set; } = 45;
+    /// <summary>How long a request may take. A local model may first have to load into memory (many seconds for a big
+    /// one), so it gets at least two minutes.</summary>
+    [JsonIgnore]
+    public TimeSpan RequestTimeout => TimeSpan.FromSeconds(Backend.Equals("local", StringComparison.OrdinalIgnoreCase) ? Math.Max(TimeoutSeconds, 120) : TimeoutSeconds);
     /// <summary>Keep only the first line of the answer (recommended for terminals: a newline would run the command).</summary>
     public bool SingleLine { get; set; } = true;
     /// <summary>"short" (one word / command), "sentence" or "paragraph".</summary>
@@ -181,6 +203,10 @@ public sealed class AppConfig
                 var text = File.ReadAllText(FilePath);
                 var loaded = JsonSerializer.Deserialize<AppConfig>(text, Json) ?? new AppConfig();
                 if (loaded.SystemPrompt is OldSystemPrompt or PreviousSystemPrompt) loaded.SystemPrompt = DefaultSystemPrompt;
+                // Before 0.4.7, Ctrl+Alt+Enter was the ask-about-selection default; it's now the rewrite one. A config
+                // saved before the rewrite shortcut existed moves to the new defaults, so the two don't clash.
+                if (!text.Contains("\"RewriteHotkey\"", StringComparison.Ordinal) && loaded.SelectionHotkey == "Ctrl+Alt+Enter")
+                    loaded.SelectionHotkey = new AppConfig().SelectionHotkey;
                 // Few-shot examples added in later versions (matched by request text).
                 foreach (var ex in new AppConfig().Examples)
                     if (!loaded.Examples.Any(e => e.Request.Equals(ex.Request, StringComparison.OrdinalIgnoreCase)))

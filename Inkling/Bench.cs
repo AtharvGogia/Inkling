@@ -9,7 +9,7 @@ namespace Inkling;
 /// <summary>
 /// Benchmark through the real request path (system prompt, examples, app context, streaming, answer cleaning):
 ///   Inkling.exe --bench [--questions bench\questions.json] [--out bench\results] [--length short|sentence|paragraph] model1 [model2 ...]
-/// A model is a NIM model id, or "claude" / "agy" for the CLI backends. Writes a Markdown report.
+/// A model is a NIM model id, "local:<id>" for a model on a local server (LocalBaseUrl), or "claude" / "agy" for the CLI backends. Writes a Markdown report.
 /// </summary>
 internal static class Bench
 {
@@ -44,8 +44,9 @@ internal static class Bench
             cfg.SingleLine = true;
             cfg.AnswerLength = length;
             if (model is "claude" or "agy") cfg.Backend = model;
+            else if (model.StartsWith("local:", StringComparison.OrdinalIgnoreCase)) { cfg.Backend = "local"; cfg.LocalModel = model[6..]; }
             else { cfg.Backend = "nim"; cfg.NimModel = model; }
-            bool api = cfg.Backend == "nim";
+            bool api = cfg.Backend is "nim" or "local";
 
             Console.WriteLine($"\n== {model} ({questions.Count} questions)");
             using var backend = TrayApp.CreateBackend(cfg);
@@ -59,7 +60,7 @@ internal static class Bench
                 results.Add(r);
                 Console.WriteLine($"  {(r.Error != null ? "ERR" : r.Correct ? " ok" : "BAD")} {r.TotalMs,6:0} ms  {q.Domain,-11} {q.Q,-45} -> {Short(r.Error ?? r.Answer, 70)}");
                 // Stay under the key's ~40 requests/min (NIM); give the CLI time to warm its replacement process.
-                var minGap = api ? 2000 : 2500;
+                var minGap = cfg.Backend == "local" ? 0 : api ? 2000 : 2500; // a local model has no rate limit
                 var left = minGap - (Environment.TickCount64 - start);
                 if (left > 0) Thread.Sleep((int)left);
             }
@@ -85,12 +86,12 @@ internal static class Bench
         var file = BrowserUrl.IsBrowser(app.Process) ? null : OpenFile.FromTitle(app.Process, app.Title);
         var where = new ForegroundContext.Where(app.Name, app.Process, app.Title, app.Url, file);
         var code = CodeDetector.Detect(q.Q, app.Url, app.Title, file?.Extension);
-        bool terminal = cfg.SelectionSkipApps.Contains(app.Process, StringComparer.OrdinalIgnoreCase);
+        bool terminal = cfg.OneLineOnly(app.Process);
         trace.Multiline = code != null && !terminal;
         var message = Prompt.Build(cfg, ForegroundContext.Compose(where, cfg), q.Q, [], code, terminal);
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+            using var cts = new CancellationTokenSource(cfg.RequestTimeout);
             var raw = backend.AskAsync(message, trace, cts.Token).GetAwaiter().GetResult();
             var answer = OutputCleaner.Clean(raw, singleLine: !trace.Multiline);
             double total = trace.ResultMs;
@@ -104,7 +105,7 @@ internal static class Bench
         }
         catch (Exception ex)
         {
-            var msg = ex is OperationCanceledException ? "timed out (45 s)" : ex.Message;
+            var msg = ex is OperationCanceledException ? $"timed out ({cfg.RequestTimeout.TotalSeconds:0} s)" : ex.Message;
             return new Result(model, q, "", false, false, msg, trace.FirstOutputMs, trace.Now, trace.ReasoningChars);
         }
     }

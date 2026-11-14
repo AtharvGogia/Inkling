@@ -43,6 +43,54 @@ public static partial class OutputCleaner
         return result;
     }
 
+    /// <summary>
+    /// A rewritten selection: fences and thinking removed, but indentation kept exactly (the selection may sit inside
+    /// indented code), and a final line break kept when the selection had one (whole lines were selected).
+    /// </summary>
+    public static string CleanRewrite(string raw, string selected)
+    {
+        var text = raw.Replace("\r\n", "\n");
+        var thinkEnd = text.LastIndexOf("</think>", StringComparison.Ordinal);
+        if (thinkEnd >= 0) text = text[(thinkEnd + 8)..];
+        else if (text.TrimStart().StartsWith("<think>", StringComparison.Ordinal)) return "";
+        // A fence only counts when the selection itself wasn't fenced Markdown.
+        if (!selected.Contains("```") && FenceRegex().Match(text) is { Success: true } fence) text = fence.Groups[1].Value;
+        // Some models echo the <<< >>> markers from the prompt.
+        text = text.Trim('\n', '\r');
+        if (text.StartsWith("<<<", StringComparison.Ordinal)) text = text[3..].TrimStart('\n', '\r');
+        if (text.EndsWith(">>>", StringComparison.Ordinal)) text = text[..^3].TrimEnd('\n', '\r');
+        text = string.Join("\n", text.Split('\n').Select(l => l.TrimEnd()));
+        if (text.Trim().Length == 0) return "";
+        // Quotes around the whole answer that the selection didn't have.
+        var t = text.Trim();
+        if (t.Length >= 2 && t[0] == '"' && t[^1] == '"' && t.IndexOf('"', 1) == t.Length - 1 && !selected.TrimStart().StartsWith('"'))
+            text = t[1..^1];
+        // Keep the selection's own leading indentation if the model dropped it.
+        var lead = selected.Replace("\r\n", "\n");
+        var indent = lead[..(lead.Length - lead.TrimStart(' ', '\t').Length)];
+        if (indent.Length > 0 && !indent.Contains('\n') && !text.StartsWith(indent, StringComparison.Ordinal) && !char.IsWhiteSpace(text[0]))
+            text = indent + text;
+        if (selected.EndsWith('\n') && !text.EndsWith('\n')) text += "\n";
+        return text;
+    }
+
+    /// <summary>
+    /// What of an answer that is still arriving can be typed already. Null when it can't be streamed at all: it starts
+    /// with a code fence, thinking, a quote or a "$ " prompt, which only the finished answer can clean. Trailing spaces
+    /// and line breaks are held back until more text follows, since the finished answer is trimmed.
+    /// </summary>
+    public static string? LivePrefix(string raw, bool singleLine, bool done)
+    {
+        var t = raw.Replace("\r\n", "\n").TrimStart();
+        if (t.Length == 0) return "";
+        if (!done && t.Length < 3) return ""; // too early to tell "``" from "```"
+        if (t.StartsWith("```", StringComparison.Ordinal) || t.StartsWith("<think", StringComparison.Ordinal)
+            || t[0] is '"' or '\'' or '`' || PromptRegex().IsMatch(t))
+            return null;
+        if (singleLine && t.IndexOf('\n') is var nl and >= 0) t = t[..nl];
+        return t.TrimEnd();
+    }
+
     private static string CleanLine(string line)
     {
         var l = line.Trim();

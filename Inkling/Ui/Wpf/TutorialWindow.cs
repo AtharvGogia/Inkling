@@ -31,6 +31,7 @@ internal sealed class TutorialWindow : Window
         string ask = HotkeyBox.Pretty(c.Hotkey);
         string sel = c.SelectionHotkey.Length > 0 ? HotkeyBox.Pretty(c.SelectionHotkey) : "(off: turn it on in Settings → General)";
         string retry = c.RetryHotkey.Length > 0 ? HotkeyBox.Pretty(c.RetryHotkey) : "(off: turn it on in Settings → General)";
+        string rewrite = c.RewriteHotkey.Length > 0 ? HotkeyBox.Pretty(c.RewriteHotkey) : "(off: turn it on in Settings → General)";
         return
         [
             new("Welcome", [
@@ -67,37 +68,56 @@ internal sealed class TutorialWindow : Window
                 new Para("The corner shows i_thnk while it works and i_fin when it's done."),
                 new Note("Inkling copies the selection with Ctrl+C and puts your clipboard back straight after; the copy may still show in Windows clipboard history (Win+V). It's off in terminals, where Ctrl+C would interrupt the shell."),
             ]),
-            new("4. Try again", [
+            new("4. Rewrite selected text", [
+                new Para($"Select some text, press {rewrite}, type what to change and press Enter. The selection is replaced with the rewritten text."),
+                new Code("make it more formal\nturn it into bullet points\ntranslate to german\nadd type hints"),
+                new Para("While you type the instruction, your keys go to Inkling, not the app, so the selection stays safe. Common ones need no typing: press 1 to fix the grammar (or just Enter), 2 for shorter, 3 for more formal, 4 for friendlier, 5 for bullet points."),
+                new Note("The rewritten text is pasted in, so line breaks and indentation come through as written, and your clipboard is put back afterwards. Esc cancels. It's off in terminals."),
+            ]),
+            new("5. Try again", [
                 new Para($"Not quite right? Press {retry} straight away. The answer is swapped for a different one, and the model is told which answers you passed on."),
                 new Para("It works until you type, click or switch windows. After that, the shortcut goes to the app as usual."),
             ]),
-            new("5. Answer length", [
+            new("6. Answer length", [
                 new Para("Short (a word or a command) is the default. For more, pick A sentence or two, or A paragraph, in the tray menu or Settings → General."),
                 new Para("With Keep answers on one line (Settings → Typing), longer answers stay on one line, so a terminal never gets an Enter it didn't ask for."),
+                new Para("Longer answers start appearing as soon as the model starts writing them, instead of all at once at the end. You can turn that off in Settings → Typing."),
                 new Sub("Code"),
                 new Para("Ask for code (\"create and reverse a string in rust\", \"python function that checks for primes\") and you get the code itself, on as many lines as it needs, whatever the length setting. On a code site such as the Rust Playground, or in a code file in your editor, you don't even need to name the language: \"create and reverse a string\" is enough."),
-                new Para("Code is pasted rather than typed, so the editor doesn't re-indent it. Your clipboard is put back right after, and the code stays out of clipboard history. In a terminal, code requests still get a single command."),
+                new Para("Code is pasted rather than typed, so the editor doesn't re-indent it. Your clipboard is put back right after, and the code stays out of clipboard history. In a terminal, code requests still get a single command, and so do VS Code and its forks, whose built-in terminal Inkling can't tell apart from the editor."),
             ]),
-            new("6. Snippets", [
+            new("7. Snippets", [
                 new Para("Snippets are your own instant replies, with no model involved. Ask for a snippet's name and its text is typed straight away."),
                 new Steps("Open Settings → Snippets and click Add snippet.",
                           "Under You type, enter the name (for example: sig).",
                           "Under You get, enter the text to type."),
                 new Para("{date}, {time}, {datetime} and {clipboard} are filled in, so “today” → {date} gives today's date."),
             ]),
-            new("7. Risky commands", [
+            new("8. Risky commands", [
                 new Para("If an answer could delete or break things (rm -rf, find … -delete, DROP TABLE, DELETE without WHERE, git reset --hard, Remove-Item -Recurse, format, shutting down…), it isn't typed straight away."),
                 new Para("A red bar shows the command and what it would do. Enter types it; Esc, or any other key, puts your request back."),
                 new Note("You can turn this off in Settings → Privacy, but it's worth keeping: answers come from a language model and can be wrong."),
             ]),
-            new("8. Privacy and apps to skip", [
+            new("9. Privacy and apps to skip", [
                 new Para("Each request sends your request (or selected text), the app's name and, if those options are on, the window title and what's open: the page's address in a browser (just the site and page, never the part after ? or #), or the file's name in other apps (never its folder). Nothing from private browser windows. It all goes to NVIDIA's API; Inkling has no server of its own and collects nothing."),
                 new Para("Both options are in Settings → Privacy, under Sent with each request."),
                 new Para("The keyboard hook sees every key press (that's how it spots the shortcut), but only what you type after the shortcut is kept, in memory, and never written anywhere. The log holds timings and errors, not text."),
                 new Sub("Turn Inkling off in some apps"),
                 new Para("In Settings → Privacy, under Turned off in, add apps where Inkling's shortcuts should do nothing: password managers (KeePass, 1Password and Bitwarden are there already), games, remote desktops."),
             ]),
-            new("9. Use a command-line AI instead", [
+            new("10. Run a model on this PC", [
+                new Para("Instead of NVIDIA's API, Inkling can use a model running on your own PC. Nothing leaves your computer, it works offline, and there's no rate limit. Small models answer fast but make more mistakes; bigger ones need a good graphics card."),
+                new Sub("With Ollama"),
+                new Steps("Install Ollama from ollama.com.",
+                          "In a terminal, download a model with the command below (or any other model from ollama.com).",
+                          "In Inkling: Settings → Model → Or run a model on this PC. Click Refresh, pick the model, click Test, then choose Use a local model."),
+                new Code("ollama pull llama3.2"),
+                new Sub("With LM Studio"),
+                new Steps("In LM Studio, download and load a model, then start its local server (Developer tab).",
+                          "In Inkling, set the server to http://localhost:1234/v1, click Refresh and pick the model."),
+                new Note("The first answer after a while can take a few seconds: the model is loaded into memory when you press the shortcut. Switch back any time from the tray's Model menu."),
+            ]),
+            new("11. Use a command-line AI instead", [
                 new Para("If NVIDIA's API is down, or you'd rather use a tool you already pay for, Inkling can ask the Claude Code CLI or Google's Antigravity CLI. Each keeps a copy running in the background so it's ready, but answers take 1 to 5 seconds instead of under one."),
                 new Sub("Claude Code"),
                 new Steps("Install Node.js 18 or later (nodejs.org), then in a terminal run the command below.",
@@ -113,7 +133,7 @@ internal sealed class TutorialWindow : Window
                 new Para("Inkling uses gemini-3.8-flash-low by default (AgyModel in config.json)."),
                 new Note("Inkling finds both tools on your PATH. If it can't, set ClaudePath or AgyPath in config.json (Settings → About → Open config.json) to the full path of claude.exe or agy.exe. Restart the CLI from Settings → Model if one gets stuck."),
             ]),
-            new("10. If something doesn't work", [
+            new("12. If something doesn't work", [
                 new Sub("Nothing happens when I press the shortcut"),
                 new Para("Check the tray icon isn't paused, and that the app isn't on the Turned off in list. Windows doesn't let a normal app read keys from apps running as administrator; run Inkling as administrator too if you need that. Another program may also use the same shortcut: change it in Settings → General."),
                 new Sub("“NIM key rejected” or “Model not available”"),

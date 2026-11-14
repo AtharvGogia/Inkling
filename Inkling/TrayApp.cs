@@ -111,6 +111,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     {
         "claude" => $"Claude Code CLI ({cfg.ClaudeModel})",
         "agy" or "gemini" => $"Gemini via agy ({cfg.AgyModel})",
+        "local" => cfg.LocalModel.Length > 0 ? $"{cfg.LocalModel} on this PC" : "a local model (none picked)",
         _ => AppConfig.ModelName(cfg.NimModel),
     };
 
@@ -125,7 +126,7 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         _config.Save();
         _overlay.Style = StatusOverlay.Parse(_config.Indicator);
         _overlay.Dark = IsDark(_config.Theme);
-        if (old.Hotkey != cfg.Hotkey || old.RetryHotkey != cfg.RetryHotkey || old.SelectionHotkey != cfg.SelectionHotkey)
+        if (old.Hotkey != cfg.Hotkey || old.RetryHotkey != cfg.RetryHotkey || old.SelectionHotkey != cfg.SelectionHotkey || old.RewriteHotkey != cfg.RewriteHotkey)
         {
             try { _capture.ReloadHotkey(); }
             catch (FormatException ex) { _tray.ShowBalloonTip(4000, "Inkling: bad shortcut", ex.Message, ToolTipIcon.Warning); }
@@ -212,8 +213,8 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Inkling {AppInfo.Version} on {Environment.OSVersion} ({(Environment.Is64BitProcess ? "x64" : "x86")})");
-        sb.AppendLine($"Using: {Describe(_config)} [{_config.Backend}, {_config.NimModel}], API key: {Secrets.NimKeySource() ?? "none"}");
-        sb.AppendLine($"Shortcuts: ask {_config.Hotkey}, selection {(_config.SelectionHotkey.Length > 0 ? _config.SelectionHotkey : "off")}, retry {(_config.RetryHotkey.Length > 0 ? _config.RetryHotkey : "off")}");
+        sb.AppendLine($"Using: {Describe(_config)} [{_config.Backend}, {(_config.Backend == "local" ? _config.LocalModel + " at " + _config.LocalBaseUrl : _config.NimModel)}], API key: {Secrets.NimKeySource() ?? "none"}");
+        sb.AppendLine($"Shortcuts: ask {_config.Hotkey}, rewrite {(_config.RewriteHotkey.Length > 0 ? _config.RewriteHotkey : "off")}, selection {(_config.SelectionHotkey.Length > 0 ? _config.SelectionHotkey : "off")}, retry {(_config.RetryHotkey.Length > 0 ? _config.RetryHotkey : "off")}");
         sb.AppendLine($"Length {_config.AnswerLength}, single line {_config.SingleLine}, dots {_config.ThinkingDots}, indicator {_config.Indicator}, typing {_config.TypingDelayMs}/{_config.SlowAppDelayMs} ms, risk guard {_config.RiskGuard}, window titles {_config.SendWindowTitle}, page/file {_config.SendOpenItem}");
         sb.AppendLine($"Off in: {string.Join(", ", _config.DisabledApps)}; slow apps: {string.Join(", ", _config.SlowApps)}");
         sb.AppendLine(Diagnostics.Summary().Replace("\r\n", "\n").Trim());
@@ -293,6 +294,14 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
         old.Dispose();
     }
 
+    private void SetBackend(string backend)
+    {
+        var cfg = _config.Clone();
+        cfg.Backend = backend;
+        Apply(cfg);
+        _settings?.Reload();
+    }
+
     private void SetModel(string id)
     {
         var cfg = _config.Clone();
@@ -324,17 +333,27 @@ internal sealed class TrayApp : ApplicationContext, ISettingsHost
             var id = m.Id;
             _modelMenu.DropDownItems.Add(new ToolStripMenuItem(m.Name, null, (_, _) => SetModel(id))
             {
-                Checked = _backend is ChatApiBackend && _config.NimModel == id,
+                Checked = _backend is ChatApiBackend { Local: false } && _config.NimModel == id,
                 ToolTipText = m.Description,
             });
         }
-        if (_backend is not ChatApiBackend)
+        // A model on this PC, once one has been picked in Settings.
+        if (_config.LocalModel.Length > 0)
+        {
+            _modelMenu.DropDownItems.Add(new ToolStripSeparator());
+            _modelMenu.DropDownItems.Add(new ToolStripMenuItem($"{_config.LocalModel} (on this PC)", null, (_, _) => SetBackend("local"))
+            {
+                Checked = _backend is ChatApiBackend { Local: true },
+                ToolTipText = $"Runs on this PC through {_config.LocalBaseUrl}",
+            });
+        }
+        if (_backend is not ChatApiBackend && !_config.Backend.Equals("local", StringComparison.OrdinalIgnoreCase))
             _modelMenu.DropDownItems.Add(new ToolStripMenuItem($"Using {Describe(_config)}") { Checked = true, Enabled = false });
         foreach (var (length, item) in _lengthItems) item.Checked = Prompt.NormalizeLength(_config.AnswerLength) == length;
         _pauseItem.Checked = _capture.Paused;
 
         var text = $"Inkling · {HotkeyBox.Pretty(_capture.Hotkey.ToString())} · {Describe(_config)}{(_capture.Paused ? " · paused" : "")}" +
-                   (_backend is ChatApiBackend && Secrets.NimKeySource() == null ? " · no API key" : "");
+                   (_backend is ChatApiBackend { Local: false } && Secrets.NimKeySource() == null ? " · no API key" : "");
         _tray.Text = text.Length > 127 ? text[..127] : text;
     }
 

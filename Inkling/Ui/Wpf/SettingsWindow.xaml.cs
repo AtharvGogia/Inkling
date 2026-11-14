@@ -45,14 +45,16 @@ internal sealed partial class SettingsWindow : Window
         Wordmark.Source = WordmarkImage(_cfg.Theme);
         VersionText.Text = $"Inkling {AppInfo.Version}";
 
-        foreach (var box in new[] { AskHotkey, SelectionHotkey, RetryHotkey })
+        foreach (var box in new[] { AskHotkey, SelectionHotkey, RetryHotkey, RewriteHotkey })
             box.RecordingChanged += recording => _host.SetHotkeysSuspended(recording);
         AskHotkey.Changed += v => HotkeyChanged(AskHotkey, AskProblem, v, (c, x) => c.Hotkey = x, c => c.Hotkey);
         SelectionHotkey.Changed += v => HotkeyChanged(SelectionHotkey, SelectionProblem, v, (c, x) => c.SelectionHotkey = x, c => c.SelectionHotkey);
         RetryHotkey.Changed += v => HotkeyChanged(RetryHotkey, RetryProblem, v, (c, x) => c.RetryHotkey = x, c => c.RetryHotkey);
+        RewriteHotkey.Changed += v => HotkeyChanged(RewriteHotkey, RewriteProblem, v, (c, x) => c.RewriteHotkey = x, c => c.RewriteHotkey);
         // Backspace/Esc end a recording without raising Changed; turning one off must still be saved.
         SelectionHotkey.LostKeyboardFocus += (_, _) => { if (SelectionHotkey.Value.Length == 0 && _host.Config.SelectionHotkey.Length > 0) Set(c => c.SelectionHotkey = ""); };
         RetryHotkey.LostKeyboardFocus += (_, _) => { if (RetryHotkey.Value.Length == 0 && _host.Config.RetryHotkey.Length > 0) Set(c => c.RetryHotkey = ""); };
+        RewriteHotkey.LostKeyboardFocus += (_, _) => { if (RewriteHotkey.Value.Length == 0 && _host.Config.RewriteHotkey.Length > 0) Set(c => c.RewriteHotkey = ""); };
 
         foreach (var (rb, len) in new[] { (LengthShort, "short"), (LengthSentence, "sentence"), (LengthParagraph, "paragraph") })
             rb.Checked += (_, _) => Set(c => c.AnswerLength = len);
@@ -60,8 +62,25 @@ internal sealed partial class SettingsWindow : Window
             rb.Checked += (_, _) => { Set(c => c.Theme = theme); Theme.ApplyTo(this, theme); Wordmark.Source = WordmarkImage(theme); };
         StartupCheck.Click += (_, _) => _host.StartupEnabled = StartupCheck.IsChecked == true;
 
-        foreach (var (rb, backend) in new[] { (BackendNim, "nim"), (BackendClaude, "claude"), (BackendAgy, "agy") })
-            rb.Checked += (_, _) => Set(c => c.Backend = backend);
+        foreach (var (rb, backend) in new[] { (BackendNim, "nim"), (BackendLocal, "local"), (BackendClaude, "claude"), (BackendAgy, "agy") })
+            rb.Checked += (_, _) => { Set(c => c.Backend = backend); SyncBackendRadios(); };
+        LocalUrl.LostFocus += async (_, _) =>
+        {
+            var url = LocalUrl.Text.Trim();
+            if (url.Length == 0 || url == _host.Config.LocalBaseUrl) return;
+            Set(c => c.LocalBaseUrl = url);
+            await RefreshLocalModelsAsync();
+        };
+        LocalModelBox.SelectionChanged += (_, _) =>
+        {
+            if (LocalModelBox.SelectedItem is string id && id != _host.Config.LocalModel) Set(c => c.LocalModel = id);
+        };
+        LocalModelBox.LostFocus += (_, _) =>
+        {
+            var id = LocalModelBox.Text.Trim();
+            if (id != _host.Config.LocalModel) Set(c => c.LocalModel = id);
+        };
+        StreamCheck.Click += (_, _) => Set(c => c.StreamAnswers = StreamCheck.IsChecked == true);
 
         IndicatorIcon.Checked += (_, _) => Set(c => c.Indicator = "icon");
         IndicatorBar.Checked += (_, _) => Set(c => c.Indicator = "bar");
@@ -91,7 +110,8 @@ internal sealed partial class SettingsWindow : Window
             AskHotkey.Value = HotkeyBox.Pretty(_cfg.Hotkey);
             SelectionHotkey.Value = HotkeyBox.Pretty(_cfg.SelectionHotkey);
             RetryHotkey.Value = HotkeyBox.Pretty(_cfg.RetryHotkey);
-            foreach (var p in new[] { AskProblem, SelectionProblem, RetryProblem }) p.Visibility = WpfVisibility.Collapsed;
+            RewriteHotkey.Value = HotkeyBox.Pretty(_cfg.RewriteHotkey);
+            foreach (var p in new[] { AskProblem, SelectionProblem, RetryProblem, RewriteProblem }) p.Visibility = WpfVisibility.Collapsed;
 
             (Prompt.NormalizeLength(_cfg.AnswerLength) switch { "sentence" => LengthSentence, "paragraph" => LengthParagraph, _ => LengthShort }).IsChecked = true;
             (_cfg.Theme.ToLowerInvariant() switch { "light" => ThemeLight, "dark" => ThemeDark, _ => ThemeSystem }).IsChecked = true;
@@ -100,7 +120,10 @@ internal sealed partial class SettingsWindow : Window
             BuildModelList();
             BackendClaude.Content = $"Claude Code CLI ({_cfg.ClaudeModel})";
             BackendAgy.Content = $"Gemini via the Antigravity CLI ({_cfg.AgyModel})";
-            (_cfg.Backend.ToLowerInvariant() switch { "claude" => BackendClaude, "agy" or "gemini" => BackendAgy, _ => BackendNim }).IsChecked = true;
+            SyncBackendRadios();
+            LocalUrl.Text = _cfg.LocalBaseUrl;
+            if (!LocalModelBox.Items.Contains(_cfg.LocalModel) && _cfg.LocalModel.Length > 0) LocalModelBox.Items.Add(_cfg.LocalModel);
+            LocalModelBox.Text = _cfg.LocalModel;
             RefreshKeyStatus();
 
             (_cfg.Indicator.Equals("bar", StringComparison.OrdinalIgnoreCase) ? IndicatorBar : IndicatorIcon).IsChecked = true;
@@ -111,6 +134,7 @@ internal sealed partial class SettingsWindow : Window
             SlowSpeedText.Text = $"{SlowSpeedSlider.Value:0} ms";
             SlowApps.Items = _cfg.SlowApps;
             SingleLineCheck.IsChecked = _cfg.SingleLine;
+            StreamCheck.IsChecked = _cfg.StreamAnswers;
 
             RiskCheck.IsChecked = _cfg.RiskGuard;
             DisabledApps.Items = _cfg.DisabledApps;
@@ -151,14 +175,16 @@ internal sealed partial class SettingsWindow : Window
 
     private void RefreshStatus()
     {
-        bool api = _cfg.Backend.ToLowerInvariant() is not ("claude" or "agy" or "gemini");
-        StatusModel.Text = _cfg.Backend.ToLowerInvariant() switch
+        var backend = _cfg.Backend.ToLowerInvariant();
+        bool api = backend is not ("claude" or "agy" or "gemini" or "local");
+        StatusModel.Text = backend switch
         {
             "claude" => $"Claude Code CLI",
             "agy" or "gemini" => $"Gemini CLI",
+            "local" => _cfg.LocalModel.Length > 0 ? $"{_cfg.LocalModel} (on this PC)" : "Local model (none picked)",
             _ => AppConfig.ModelName(_cfg.NimModel),
         };
-        StatusKey.Text = !api ? "Command-line tool" : Secrets.NimKeySource() == null ? "No API key yet" : "Ready";
+        StatusKey.Text = backend == "local" ? "No key needed" : !api ? "Command-line tool" : Secrets.NimKeySource() == null ? "No API key yet" : "Ready";
         StatusHotkeys.Text = HotkeyBox.Pretty(_cfg.Hotkey) + " to ask";
     }
 
@@ -171,7 +197,7 @@ internal sealed partial class SettingsWindow : Window
         try
         {
             var hk = Hotkey.Parse(value);
-            var others = new[] { (AskHotkey, _cfg.Hotkey), (SelectionHotkey, _cfg.SelectionHotkey), (RetryHotkey, _cfg.RetryHotkey) }
+            var others = new[] { (AskHotkey, _cfg.Hotkey), (SelectionHotkey, _cfg.SelectionHotkey), (RetryHotkey, _cfg.RetryHotkey), (RewriteHotkey, _cfg.RewriteHotkey) }
                 .Where(o => o.Item1 != box && o.Item2.Length > 0);
             if (others.Any(o => Hotkey.Parse(o.Item2) == hk)) blocking = $"{HotkeyBox.Pretty(value)} is already one of Inkling's other shortcuts.";
             else if (HotkeyBox.Problem(value) is { } p)
@@ -206,15 +232,37 @@ internal sealed partial class SettingsWindow : Window
             choices.Add(new ModelChoice(_cfg.NimModel, _cfg.NimModel, "Set by hand in config.json."));
         foreach (var m in choices)
         {
-            var rb = new WpfRadioButton { GroupName = "Model", Margin = new Thickness(0, 0, 0, 8), IsChecked = m.Id == _cfg.NimModel };
+            var rb = new WpfRadioButton { GroupName = "Model", Margin = new Thickness(0, 0, 0, 8), Tag = m.Id };
             var label = new StackPanel();
             label.Children.Add(new WpfTextBlock { Text = m.Name });
             label.Children.Add(new WpfTextBlock { Text = m.Description, Opacity = 0.7, TextWrapping = TextWrapping.Wrap });
             rb.Content = label;
             var id = m.Id;
-            rb.Checked += (_, _) => Set(c => { c.NimModel = id; c.Backend = "nim"; BackendNim.IsChecked = true; });
+            rb.Checked += (_, _) => { Set(c => { c.NimModel = id; c.Backend = "nim"; }); SyncBackendRadios(); };
             ModelList.Children.Add(rb);
         }
+    }
+
+    /// <summary>
+    /// Ticks exactly the radio buttons for what's in use: an NVIDIA model, the local model, or a CLI. They sit in
+    /// different groups (the CLI ones in a section that may be collapsed, where WPF doesn't untick them), so they're
+    /// set together here after every change, and when something else (the tray) switches the model.
+    /// </summary>
+    private void SyncBackendRadios()
+    {
+        var was = _loading;
+        _loading = true;
+        try
+        {
+            var b = _cfg.Backend.ToLowerInvariant();
+            foreach (var rb in ModelList.Children.OfType<WpfRadioButton>())
+                rb.IsChecked = b == "nim" && rb.Tag as string == _cfg.NimModel;
+            BackendLocal.IsChecked = b == "local";
+            BackendNim.IsChecked = b == "nim";
+            BackendClaude.IsChecked = b == "claude";
+            BackendAgy.IsChecked = b is "agy" or "gemini";
+        }
+        finally { _loading = was; }
     }
 
     private void RefreshKeyStatus()
@@ -239,6 +287,48 @@ internal sealed partial class SettingsWindow : Window
         RefreshStatus();
         TestKey_Click(sender, e);
     }
+
+    // ---- Local model ---------------------------------------------------------------------------
+
+    private async Task RefreshLocalModelsAsync()
+    {
+        LocalTestResult.Text = "Looking for models…";
+        var models = await ChatApiBackend.ListLocalModelsAsync(_host.Config.LocalBaseUrl);
+        var current = _host.Config.LocalModel;
+        _loading = true;
+        try
+        {
+            LocalModelBox.Items.Clear();
+            foreach (var m in models) LocalModelBox.Items.Add(m);
+            if (current.Length > 0 && !models.Contains(current)) LocalModelBox.Items.Add(current);
+            LocalModelBox.Text = current;
+        }
+        finally { _loading = false; }
+        LocalTestResult.Text = models.Count switch
+        {
+            0 => $"No models found at {_host.Config.LocalBaseUrl}. Is Ollama or LM Studio running?",
+            1 => "1 model found.",
+            _ => $"{models.Count} models found.",
+        };
+        // Nothing picked yet: take the first one, so the local model works straight away.
+        if (current.Length == 0 && models.Count > 0) { LocalModelBox.SelectedIndex = 0; Set(c => c.LocalModel = models[0]); }
+    }
+
+    private async void RefreshLocal_Click(object sender, RoutedEventArgs e) => await RefreshLocalModelsAsync();
+
+    private async void TestLocal_Click(object sender, RoutedEventArgs e)
+    {
+        var id = LocalModelBox.Text.Trim();
+        if (id.Length > 0 && id != _host.Config.LocalModel) Set(c => c.LocalModel = id);
+        LocalTestResult.Text = "Testing… (a model that isn't loaded yet can take a while)";
+        var cfg = _host.Config.Clone();
+        cfg.Backend = "local";
+        var (ok, message) = await ChatApiBackend.TestAsync(cfg, null);
+        LocalTestResult.Text = message;
+        if (ok && !BackendLocal.IsChecked.GetValueOrDefault()) LocalTestResult.Text += " Pick \"Use a local model\" above to use it.";
+    }
+
+    private void Ollama_Click(object sender, RoutedEventArgs e) => Open("https://ollama.com/");
 
     private async void TestKey_Click(object sender, RoutedEventArgs e)
     {
@@ -301,7 +391,8 @@ internal sealed partial class SettingsWindow : Window
         _cfg = _host.Config.Clone();
         var d = new AppConfig();
         // Only what this window shows; app lists, the prompt, examples and paths stay as they are.
-        _cfg.Hotkey = d.Hotkey; _cfg.SelectionHotkey = d.SelectionHotkey; _cfg.RetryHotkey = d.RetryHotkey;
+        _cfg.Hotkey = d.Hotkey; _cfg.SelectionHotkey = d.SelectionHotkey; _cfg.RetryHotkey = d.RetryHotkey; _cfg.RewriteHotkey = d.RewriteHotkey;
+        _cfg.StreamAnswers = d.StreamAnswers;
         _cfg.AnswerLength = d.AnswerLength; _cfg.Theme = d.Theme;
         _cfg.Backend = d.Backend; _cfg.NimModel = d.NimModel;
         _cfg.Indicator = d.Indicator; _cfg.ThinkingDots = d.ThinkingDots;

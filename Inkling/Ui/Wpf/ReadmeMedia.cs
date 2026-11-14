@@ -61,7 +61,7 @@ internal static class ReadmeMedia
     private static string Typed(string text, double t, double start, double cps) =>
         t < start ? "" : text[..Math.Min(text.Length, (int)((t - start) * cps))];
 
-    private static string Dots(double t, double start) => new('.', 1 + (int)((t - start) / 0.13) % 3);
+    private static string Dots(double t, double start) => new('.', 1 + (int)((t - start) / 0.3) % 3);
 
     private static bool Blink(double t) => (int)(t * 2) % 2 == 0;
 
@@ -91,8 +91,8 @@ internal static class ReadmeMedia
                 int sel = Math.Min(text.Length, (int)((t - 0.6) / 1.0 * text.Length));
                 return new(text[..^sel], text[^sel..], "", false, Light.Off, null, null);
             }
-            if (t < 2.2) return new("", text, "", false, Light.Off, "Ctrl + Alt + Enter", null);
-            if (t < 3.6) return new(Dots(t, 2.2), "", "", true, Light.Thinking, t < 2.9 ? "Ctrl + Alt + Enter" : null, null);
+            if (t < 2.2) return new("", text, "", false, Light.Off, "Ctrl + Alt + W", null);
+            if (t < 3.6) return new(Dots(t, 2.2), "", "", true, Light.Thinking, t < 2.9 ? "Ctrl + Alt + W" : null, null);
             if (t < 4.0) return new(Typed(ans, t, 3.6, 40), "", "", true, Light.Thinking, null, null);
             return new(ans, "", "", Blink(t), t < 5.2 ? Light.Done : Light.Off, null, null);
         });

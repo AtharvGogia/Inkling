@@ -20,6 +20,10 @@ public sealed class RequestTrace
     public bool Retry { get; set; }
     /// <summary>"code" when the request asked for code to be written, else "text".</summary>
     public string Kind { get; set; } = "text";
+    /// <summary>The answer was typed while it streamed in, not after.</summary>
+    public bool Streamed { get; set; }
+    /// <summary>A higher output limit for this request (rewriting a long selection); 0 = the usual one.</summary>
+    public int MaxTokens { get; set; }
     /// <summary>The answer may have several lines (code outside a terminal): read the whole stream, paste it.</summary>
     public bool Multiline { get; set; }
     public string Outcome { get; set; } = "";
@@ -49,6 +53,8 @@ public sealed class RequestTrace
     public double StartupOutputMs { get; set; } = -1;
     /// <summary>Request written -> first line back.</summary>
     public double FirstOutputMs { get; set; } = -1;
+    /// <summary>API: request sent -> the last piece of the answer arrived (the rest of the turn is the stream closing).</summary>
+    public double LastOutputMs { get; set; } = -1;
     /// <summary>Request written -> result line: the whole turn as seen from Inkling.</summary>
     public double ResultMs { get; set; } = -1;
     /// <summary>The CLI's own total for the turn, if it reports one (Claude: duration_ms).</summary>
@@ -93,14 +99,14 @@ public sealed class RequestTrace
     public string OneLine() =>
         $"trace {Backend} {App} {Kind} {(Retry ? "retry " : "")}{Outcome}: total {Ms(TotalMs)} | sent@{Ms(SentAtMs)} " +
         $"(sel {Ms(SelectionMs)} {SelectionChars} ch, ctx {Ms(ContextMs)}, gate {Ms(GateWaitMs)}{(ColdStart ? $", COLD spawn {Ms(SpawnMs)}" : "")}) | " +
-        $"turn {Ms(ResultMs)} (first-out {Ms(FirstOutputMs)}, api {Ms(ApiMs)}, cli-overhead {Ms(CliOverheadMs)}) | " +
+        $"turn {Ms(ResultMs)} (first-out {Ms(FirstOutputMs)}, last-out {Ms(LastOutputMs)}, thinking {ReasoningChars} ch, api {Ms(ApiMs)}, cli-overhead {Ms(CliOverheadMs)}) | " +
         $"parse {Ms(ParseMs)} | dots-stop {Ms(DotsStopMs)} erase {Ms(FinalEraseMs)} type {Ms(TypeMs)} ({TypedChars} ch @ {PaceMs} ms) | " +
         $"cli age {Ms(ProcessAgeMs)} startup-out {Ms(StartupOutputMs)} | prompt {PromptChars} ch {Tokens}";
 
     public string Report()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"{At:HH:mm:ss}  {Backend}  in {(App.Length > 0 ? App : "?")}{(Retry ? "  (retry)" : "")}  length={Length}  {Kind}{(Multiline ? ", pasted" : "")}  -> {Outcome}");
+        sb.AppendLine($"{At:HH:mm:ss}  {Backend}  in {(App.Length > 0 ? App : "?")}{(Retry ? "  (retry)" : "")}  length={Length}  {Kind}{(Multiline ? ", pasted" : "")}{(Streamed ? ", streamed" : "")}  -> {Outcome}");
         void Row(string label, double v, string note = "") =>
             sb.AppendLine($"  {label,-34}{Ms(v),8} ms  {note}");
 

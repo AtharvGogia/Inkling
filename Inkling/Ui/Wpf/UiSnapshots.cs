@@ -46,7 +46,7 @@ internal static class UiSnapshots
 
         var tutorial = new TutorialWindow(cfg) { Left = -20000, Top = 0, ShowActivated = false, ShowInTaskbar = false };
         tutorial.Show();
-        foreach (var (chapter, name) in new[] { (1, "tutorial-key"), (9, "tutorial-cli") })
+        foreach (var (chapter, name) in new[] { (1, "tutorial-key"), (11, "tutorial-cli") })
         {
             tutorial.Open(chapter);
             Save(tutorial, Path.Combine(folder, name + ".png"));

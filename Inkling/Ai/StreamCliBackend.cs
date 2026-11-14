@@ -12,6 +12,9 @@ public interface IAiBackend : IDisposable
     void Warm();
     /// <summary>Sends one complete user message (see <see cref="Prompt"/>) and returns the raw answer.</summary>
     Task<string> AskAsync(string message, RequestTrace trace, CancellationToken ct);
+    /// <summary>The same, calling <paramref name="onText"/> with pieces of the answer as they arrive, where the backend
+    /// can stream (the API backend). Others answer all at once and never call it.</summary>
+    Task<string> AskAsync(string message, RequestTrace trace, CancellationToken ct, Action<string>? onText) => AskAsync(message, trace, ct);
     /// <summary>Discards the warm CLI (and any chat history it holds) and starts a fresh one.</summary>
     void ClearContext();
 }

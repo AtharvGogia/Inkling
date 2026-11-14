@@ -67,6 +67,7 @@
                                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="Ask" VerticalAlignment="Center" />
                                 <local:HotkeyBox x:Name="AskHotkey" Grid.Column="1" HorizontalAlignment="Left" Width="220" />
@@ -79,6 +80,10 @@
                                 <TextBlock Grid.Row="4" Text="Try again" VerticalAlignment="Center" Margin="0,8,0,0" />
                                 <local:HotkeyBox x:Name="RetryHotkey" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" Width="220" AllowEmpty="True" Margin="0,8,0,0" />
                                 <TextBlock x:Name="RetryProblem" Grid.Row="5" Grid.Column="1" Foreground="#E0A030" TextWrapping="Wrap" Margin="0,2,0,0" Visibility="Collapsed" />
+
+                                <TextBlock Grid.Row="6" Text="Rewrite selection" VerticalAlignment="Center" Margin="0,8,0,0" />
+                                <local:HotkeyBox x:Name="RewriteHotkey" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Left" Width="220" AllowEmpty="True" Margin="0,8,0,0" />
+                                <TextBlock x:Name="RewriteProblem" Grid.Row="7" Grid.Column="1" Foreground="#E0A030" TextWrapping="Wrap" Margin="0,2,0,0" Visibility="Collapsed" />
                             </Grid>
                             <TextBlock Text="Click a box, then press the keys. Backspace turns one off." Style="{StaticResource Hint}" Margin="0,8,0,0" />
 
@@ -120,6 +125,29 @@
                                 <Hyperlink Click="NvidiaKey_Click">Get a free key</Hyperlink><Run Text=" · stored in Windows Credential Manager" />
                             </TextBlock>
 
+                            <TextBlock Text="Or run a model on this PC" Style="{StaticResource Section}" />
+                            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                       Text="Nothing leaves your PC and there's no rate limit. Works with Ollama, LM Studio or any OpenAI-compatible server. Small models answer faster but make more mistakes." />
+                            <RadioButton x:Name="BackendLocal" Content="Use a local model" GroupName="Model" />
+                            <Grid Margin="28,8,0,0">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="70" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Server" VerticalAlignment="Center" />
+                                <TextBox x:Name="LocalUrl" Grid.Column="1" ToolTip="Ollama: http://localhost:11434/v1 · LM Studio: http://localhost:1234/v1" />
+                                <TextBlock Grid.Row="1" Text="Model" VerticalAlignment="Center" Margin="0,8,0,0" />
+                                <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                                    <Button DockPanel.Dock="Right" Content="Refresh" Click="RefreshLocal_Click" Margin="8,0,0,0" />
+                                    <ComboBox x:Name="LocalModelBox" IsEditable="True" />
+                                </DockPanel>
+                            </Grid>
+                            <WrapPanel Margin="28,8,0,0">
+                                <Button Content="Test" Click="TestLocal_Click" Margin="0,0,12,0" />
+                                <TextBlock x:Name="LocalTestResult" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="360" />
+                            </WrapPanel>
+                            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="28,8,0,0">
+                                <Run Text="Ollama: install it from " /><Hyperlink Click="Ollama_Click">ollama.com</Hyperlink><Run Text=", then run ollama pull with a model's name (for example llama3.2) in a terminal, and click Refresh. LM Studio: load a model, start its local server, and set the server to http://localhost:1234/v1." />
+                            </TextBlock>
+
                             <Expander Header="Use a command-line tool instead" Margin="0,24,0,0">
                                 <StackPanel Margin="0,8,0,0">
                                     <RadioButton x:Name="BackendNim" Content="NVIDIA API" GroupName="Backend" />
@@ -154,6 +182,9 @@
 
                             <CheckBox x:Name="SingleLineCheck" Content="Keep answers on one line" Margin="0,22,0,0"
                                       ToolTip="In a terminal, a line break would run the command." />
+                            <CheckBox x:Name="StreamCheck" Content="Type longer answers as they're written" Margin="0,10,0,0" />
+                            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="28,2,0,0"
+                                       Text="For A sentence or two and A paragraph: the answer starts appearing right away instead of after the model finishes. Not in terminals, and not for code (it's pasted whole)." />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

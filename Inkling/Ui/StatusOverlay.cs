@@ -71,6 +71,13 @@ internal sealed class StatusOverlay : IDisposable
         else { _bar.HideNow(); _icon.Start(target, BadgeIndicator.Mode.Done); }
     }
 
+    /// <summary>The instruction being typed for a rewrite: always the text bar, whatever the style, near the selection.</summary>
+    public void ShowInstruction(nint target, string text)
+    {
+        _icon.Stop();
+        _bar.Display(target, "Inkling ▸ " + text, InklingArt.Accent, 0);
+    }
+
     /// <summary>A question that needs an answer (risky command): always the text bar, whatever the style, until hidden.</summary>
     public void ShowConfirm(nint target, string text)
     {

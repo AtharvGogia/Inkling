@@ -440,3 +440,131 @@ public class MultilineCleanerTests
     [Fact]
     public void Single_line_mode_unchanged() => Assert.Equal("ls -la", OutputCleaner.Clean("$ ls -la\nmore", singleLine: true));
 }
+
+public class StreamingTests
+{
+    [Theory]
+    [InlineData("```py\nx", false)]
+    [InlineData("<think>hmm", false)]
+    [InlineData("\"Hello there", false)]
+    [InlineData("$ ls -la", false)]
+    [InlineData("The quick brown", true)]
+    public void Streams_only_text_that_needs_no_cleaning(string raw, bool streamable) =>
+        Assert.Equal(streamable, OutputCleaner.LivePrefix(raw, singleLine: false, done: false) != null);
+
+    [Fact]
+    public void Waits_until_it_can_tell() => Assert.Equal("", OutputCleaner.LivePrefix("``", singleLine: false, done: false));
+
+    [Fact]
+    public void Holds_back_trailing_space() => Assert.Equal("Hello", OutputCleaner.LivePrefix("Hello ", singleLine: false, done: false));
+
+    [Fact]
+    public void One_line_mode_stops_at_the_line_break() =>
+        Assert.Equal("First line.", OutputCleaner.LivePrefix("First line.\nSecond", singleLine: true, done: false));
+
+    [Fact]
+    public void Prefix_grows_into_the_cleaned_answer()
+    {
+        var full = "Paris is the capital of France.";
+        var early = OutputCleaner.LivePrefix(full[..12], singleLine: true, done: false)!;
+        Assert.StartsWith(early, OutputCleaner.Clean(full, singleLine: true));
+    }
+}
+
+public class RewriteTests
+{
+    [Fact]
+    public void Five_presets_and_enter_alone_fixes_grammar()
+    {
+        Assert.Equal(5, Prompt.RewritePresets.Length);
+        Assert.Contains("grammar", Prompt.RewritePresets[0].Instruction);
+    }
+
+    [Fact]
+    public void Message_has_the_instruction_and_the_text()
+    {
+        var m = Prompt.BuildRewrite("Context: x", "teh cat sat", "fix it");
+        Assert.Contains("Instruction: fix it", m);
+        Assert.Contains("<<<\nteh cat sat\n>>>", m);
+    }
+
+    [Fact]
+    public void Keeps_indentation_of_selected_code() =>
+        Assert.Equal("    total = sum(xs)\n    return total", OutputCleaner.CleanRewrite("```python\ntotal = sum(xs)\n    return total\n```", "    t = 0\n    return t"));
+
+    [Fact]
+    public void Keeps_the_final_line_break_of_whole_lines() =>
+        Assert.Equal("Hello there.\n", OutputCleaner.CleanRewrite("Hello there.", "hello ther\n"));
+
+    [Fact]
+    public void Drops_echoed_markers_and_quotes()
+    {
+        Assert.Equal("Fixed text", OutputCleaner.CleanRewrite("<<<\nFixed text\n>>>", "fixd text"));
+        Assert.Equal("Fixed text", OutputCleaner.CleanRewrite("\"Fixed text\"", "fixd text"));
+    }
+
+    [Fact]
+    public void Keeps_quotes_the_selection_had() =>
+        Assert.Equal("\"Quoted\"", OutputCleaner.CleanRewrite("\"Quoted\"", "\"quoted\""));
+}
+
+public class LocalModelTests
+{
+    [Fact]
+    public void Local_requests_get_time_to_load_the_model()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(45), new AppConfig { Backend = "nim" }.RequestTimeout);
+        Assert.True(new AppConfig { Backend = "local" }.RequestTimeout >= TimeSpan.FromSeconds(120));
+    }
+
+    [Fact]
+    public void Backend_names_the_local_model()
+    {
+        var b = new ChatApiBackend(new AppConfig { Backend = "local", LocalModel = "llama3.1:latest" });
+        Assert.True(b.Local);
+        Assert.Equal("Local (llama3.1:latest)", b.DisplayName);
+        Assert.False(new ChatApiBackend(new AppConfig()).Local);
+    }
+
+    [Fact]
+    public void Office_apps_get_dots_AutoCorrect_leaves_alone()
+    {
+        Assert.DoesNotContain(CaptureController.DotFrames("WINWORD"), f => f.Contains("..."));
+        Assert.Equal("...", CaptureController.DotFrames("Notepad")[2]);
+    }
+
+    [Theory]
+    [InlineData("Code", true)]          // VS Code: its terminal looks like the editor
+    [InlineData("Cursor", true)]
+    [InlineData("WindowsTerminal", true)]
+    [InlineData("Notepad", false)]
+    [InlineData("idea64", false)]
+    public void One_line_where_a_shell_may_be_listening(string process, bool oneLine) =>
+        Assert.Equal(oneLine, new AppConfig().OneLineOnly(process));
+
+    [Theory]
+    [InlineData("WINWORD", "wait for it...", false)]
+    [InlineData("WINWORD", "git commit --amend", false)]
+    [InlineData("WINWORD", "Canberra", true)]
+    [InlineData("Notepad", "wait for it...", true)]
+    public void Retry_only_when_the_erase_count_can_be_trusted(string process, string typed, bool reliable) =>
+        Assert.Equal(reliable, CaptureController.CountIsReliable(process, typed));
+
+    [Fact]
+    public void Local_models_are_asked_not_to_think()
+    {
+        Assert.Contains("\"reasoning_effort\":\"none\"", new ChatApiBackend(new AppConfig { Backend = "local", LocalModel = "qwen3.5" }).BuildBody("hi", false, false));
+        Assert.DoesNotContain("reasoning_effort", new ChatApiBackend(new AppConfig()).BuildBody("hi", false, false));
+    }
+
+    [Fact]
+    public void Defaults_point_at_ollama()
+    {
+        var cfg = new AppConfig();
+        Assert.Equal("http://localhost:11434/v1", cfg.LocalBaseUrl);
+        Assert.Equal("", cfg.LocalModel);
+        Assert.True(cfg.StreamAnswers);
+        Assert.Equal("Ctrl+Alt+Enter", cfg.RewriteHotkey);
+        Assert.Equal("Ctrl+Alt+W", cfg.SelectionHotkey);
+    }
+}

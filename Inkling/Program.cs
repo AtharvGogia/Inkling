@@ -13,6 +13,7 @@ internal static class Program
     {
         // Developer check without the hotkey:  Inkling.exe --ask claude|agy "request" ["hint"]
         if (args.Length >= 3 && args[0] == "--ask") return AskFromCommandLine(args);
+        if (args.Length >= 3 && args[0] == "--rewrite") return RewriteFromCommandLine(args);
         // Dev options (README "Build and run"): all handled here, before the single-instance check.
         if (args.Length >= 2 && args[0] == "--render-ui") { AttachConsole(-1); return Ui.Wpf.UiSnapshots.Run(args[1], args.Length > 2 ? args[2] : null); }
         if (args.Length >= 2 && args[0] == "--render-media") { AttachConsole(-1); return Ui.Wpf.ReadmeMedia.Render(args[1]); }
@@ -46,6 +47,7 @@ internal static class Program
             Console.WriteLine("""
                 Options:
                   --ask nim|claude|agy "request" ["hint"]   ask three times, with timings
+                  --rewrite "instruction" "text" [model]     rewrite text as the rewrite shortcut would (model: NIM id or local:<id>)
                   --bench model1 [model2 ...]                run the benchmark (bench/questions.json)
                   --risk-test                                check the risky-command rules
                   --check-update                             ask GitHub for the latest release
@@ -108,6 +110,31 @@ internal static class Program
         Console.WriteLine($"{risky.Length - risky.Count(r => RiskGuard.Check(r) is null)}/{risky.Length} risky caught, " +
                           $"{safe.Length - safe.Count(s => RiskGuard.Check(s) is not null)}/{safe.Length} safe left alone");
         return bad == 0 ? 0 : 1;
+    }
+
+    /// <summary>--rewrite: the rewrite shortcut's request, without the shortcut (as if in Notepad).</summary>
+    private static int RewriteFromCommandLine(string[] args)
+    {
+        AttachConsole(-1);
+        var cfg = AppConfig.Load();
+        if (args.Length > 3)
+        {
+            if (args[3].StartsWith("local:", StringComparison.OrdinalIgnoreCase)) { cfg.Backend = "local"; cfg.LocalModel = args[3][6..]; }
+            else { cfg.Backend = "nim"; cfg.NimModel = args[3]; }
+        }
+        using IAiBackend backend = TrayApp.CreateBackend(cfg);
+        var text = args[2].Replace("\\n", "\n");
+        var trace = new RequestTrace { Kind = "rewrite", Multiline = true, MaxTokens = Math.Min(4096, text.Length / 2) };
+        var context = ForegroundContext.Compose("Notepad", "Notepad", "notes.txt - Notepad", cfg);
+        try
+        {
+            using var cts = new CancellationTokenSource(cfg.RequestTimeout);
+            var raw = backend.AskAsync(Prompt.BuildRewrite(context, text, args[1]), trace, cts.Token).GetAwaiter().GetResult();
+            Console.WriteLine($"[{backend.DisplayName}, {trace.ResultMs:0} ms]");
+            Console.WriteLine(OutputCleaner.CleanRewrite(raw, text));
+            return 0;
+        }
+        catch (Exception ex) { Console.WriteLine("Failed: " + ex.Message); return 1; }
     }
 
     private static int AskFromCommandLine(string[] args)

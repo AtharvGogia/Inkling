@@ -36,6 +36,29 @@ public static class Prompt
         } + (cfg.SingleLine ? ", all on one line" : "");
     }
 
+    /// <summary>Instructions picked with 1-5 when rewriting a selection, so the common ones need no typing.</summary>
+    public static readonly (string Label, string Instruction)[] RewritePresets =
+    [
+        ("fix grammar", "Fix the spelling and grammar, and change nothing else"),
+        ("shorter", "Make it shorter, keeping the meaning"),
+        ("formal", "Make it more formal"),
+        ("friendlier", "Make it friendlier and more casual"),
+        ("bullets", "Turn it into a short bulleted list"),
+    ];
+
+    /// <summary>The message for rewriting selected text with an instruction ("make it formal").</summary>
+    public static string BuildRewrite(string context, string selected, string instruction) =>
+        string.Join("\n",
+            context,
+            "Task: rewrite the selected text below as the instruction says. Reply with only the new text that will replace " +
+            "the selection: in the same language as the text unless the instruction says otherwise, keeping its line breaks, " +
+            "formatting and indentation where they still fit, and with nothing before or after it (no quotes, no \"Here is\", no notes).",
+            "Instruction: " + instruction,
+            "Selected text:",
+            "<<<",
+            selected,
+            ">>>");
+
     /// <summary>The message for one request. <paramref name="code"/> is set when the request wants code written;
     /// <paramref name="terminal"/> keeps a code answer to one line, since Enter would run it.</summary>
     public static string Build(AppConfig cfg, string context, string request, IReadOnlyList<string> rejected,

@@ -63,11 +63,17 @@ Inkling knows which app you're in and tailors the answer to it: a bash command i
 
 ### Ask about selected text
 
-Select some text and press **Ctrl+Alt+Enter**. The selection is the request, and the answer replaces it. The corner shows `i_thnk` while it works and `i_fin` when it's done.
+Select some text and press **Ctrl+Alt+W**. The selection is the request, and the answer replaces it. The corner shows `i_thnk` while it works and `i_fin` when it's done.
 
-![Selecting "translate to french: good morning, my friend" in Notepad, pressing Ctrl+Alt+Enter, and getting "Bonjour, mon ami" in its place](docs/media/select.gif)
+![Selecting "translate to french: good morning, my friend" in Notepad, pressing Ctrl+Alt+W, and getting "Bonjour, mon ami" in its place](docs/media/select.gif)
 
 The selection is copied with Ctrl+C and your clipboard is put back right after (the copy may still show up in Windows clipboard history). It's off in terminals, where typing doesn't replace a selection and Ctrl+C would interrupt the shell; use Ctrl+Alt+Space there.
+
+### Rewrite selected text
+
+Select some text, press **Ctrl+Alt+Enter**, type what to change ("make it more formal", "turn it into bullet points", "translate to german", "add type hints") and press **Enter**. The selection is replaced with the rewritten version.
+
+While you type the instruction, the keys go to Inkling instead of the app, so the selection stays put; the bar next to it shows what you've typed. Common ones are a single key: **1** fixes the grammar (so does Enter on its own), **2** makes it shorter, **3** more formal, **4** friendlier, **5** turns it into bullet points. The result is pasted in, so line breaks and indentation come through, and your clipboard is put back afterwards.
 
 ### Try again
 
@@ -89,13 +95,13 @@ Save phrases of your own in Settings → Snippets. Ask for one and it's typed in
 
 ### Answer length
 
-Short (a word or a command, the default), a sentence or two, or a paragraph: in the tray menu or Settings.
+Short (a word or a command, the default), a sentence or two, or a paragraph: in the tray menu or Settings. Longer answers start appearing as soon as the model starts writing, instead of all at once at the end (Settings → Typing to turn that off). Not in terminals, and not for code, which is pasted whole.
 
 ### Code
 
 Ask for code and you get the code itself, on as many lines as it needs, whatever the answer length: "create and reverse a string in rust", "python function that checks for primes", "debounce in js". Inkling also knows the language from where you are: on the [Rust Playground](https://play.rust-lang.org/), "create and reverse a string" gives Rust; in a `.py` file in your editor, it gives Python. A language you name always wins.
 
-Code is pasted in rather than typed, so editors don't re-indent it or add extra brackets as it arrives. Inkling puts your clipboard back right after, and the pasted code stays out of clipboard history. In a terminal, where every Enter runs a line, code requests still get a single command.
+Code is pasted in rather than typed, so editors don't re-indent it or add extra brackets as it arrives. Inkling puts your clipboard back right after, and the pasted code stays out of clipboard history. In a terminal, where every Enter runs a line, code requests still get a single command. The same goes for VS Code (and Cursor, Windsurf, VSCodium): from outside, its built-in terminal looks just like the editor, so code there comes as one line to be safe. The list is `OneLineApps` in `config.json`; take an editor off it if you never use its terminal.
 
 ## Settings
 
@@ -106,9 +112,9 @@ Click the tray icon. Changes apply straight away.
   <img src="docs/media/settings.png" width="720" alt="Inkling settings: shortcuts, answer length, appearance and start with Windows">
 </picture>
 
-- **General:** the three shortcuts (click a box and press the keys; Inkling refuses ones that Windows or every app relies on, like Ctrl+C or Win+L, and warns if another program already uses one), answer length, light or dark, start with Windows.
-- **Model:** Nemotron 3.5 Bolt (the default) or Laguna XS 2.1, and your API key.
-- **Typing:** the `i_rdy` corner badge or a bar next to the cursor, the `...` animation, typing speed, a slower speed for apps that drop fast typing (Notepad), and one-line answers.
+- **General:** the four shortcuts (click a box and press the keys; Inkling refuses ones that Windows or every app relies on, like Ctrl+C or Win+L, and warns if another program already uses one), answer length, light or dark, start with Windows.
+- **Model:** Nemotron 3.5 Bolt (the default) or Laguna XS 2.1 and your API key, or a model on your own PC.
+- **Typing:** the `i_rdy` corner badge or a bar next to the cursor, the `...` animation, typing speed, a slower speed for apps that drop fast typing (Notepad), one-line answers, and typing longer answers as they're written.
 - **Snippets:** your instant replies.
 - **Privacy:** the risky-command check, apps where Inkling stays off (password managers by default; add games or remote desktops), and whether window titles are sent.
 - **About:** updates, the tutorial, the welcome guide, request timings, the log, and *Copy diagnostics* for bug reports.
@@ -129,11 +135,20 @@ The two models on offer were picked from NVIDIA's free catalog: about 30 of its 
 
 Models that think before answering are accurate but far too slow to type in place. The full report is in [`bench/results`](bench/results), and the questions are in [`bench/questions.json`](bench/questions.json).
 
-The free key allows about 40 requests a minute. Inkling stays under that and tells you if you hit it. Settings → Model → *Use a command-line tool instead* can switch to the Claude Code or Gemini (Antigravity) CLI if you have one installed and signed in; the tutorial's chapter 9 walks through setting each one up. For Claude Code that's Node.js 18+ and `npm install -g @anthropic-ai/claude-code`, then running `claude` once to sign in.
+The free key allows about 40 requests a minute. Inkling stays under that and tells you if you hit it. Settings → Model → *Use a command-line tool instead* can switch to the Claude Code or Gemini (Antigravity) CLI if you have one installed and signed in; the tutorial's chapter 11 walks through setting each one up. For Claude Code that's Node.js 18+ and `npm install -g @anthropic-ai/claude-code`, then running `claude` once to sign in.
+
+### Run a model on your PC
+
+Inkling can also use a model running on your own computer through [Ollama](https://ollama.com/) or [LM Studio](https://lmstudio.ai/) (or any server with the same OpenAI-style API). Nothing leaves your PC, it works offline, and there's no rate limit.
+
+1. Install Ollama, then download a model in a terminal, for example `ollama pull llama3.2`.
+2. In Settings → Model → *Or run a model on this PC*, click **Refresh**, pick the model, click **Test**, and choose **Use a local model**.
+
+For LM Studio, start its local server and set the address to `http://localhost:1234/v1`. Inkling loads the model into memory the moment you press the shortcut, so it's ready by the time you press Enter; the very first answer can still take a few seconds. How good and how fast the answers are depends on the model and your graphics card: small models are quick but make more mistakes than the NVIDIA ones. Models that think before answering (qwen3.5, deepseek-r1, ...) are asked to skip the thinking, since a short inline answer doesn't need it and it can take a minute. Once a local model is set up, the tray's Model menu switches between it and NVIDIA's.
 
 ## Privacy
 
-Each request sends your request (or selected text), the app's name, the answer length and, if those options are on, the window title and what's open, to NVIDIA's API, which answers it. Inkling has no server of its own and collects nothing.
+Each request sends your request (or selected text), the app's name, the answer length and, if those options are on, the window title and what's open, to NVIDIA's API, which answers it, or to the model on your PC if you use one, in which case nothing leaves your computer. Inkling has no server of its own and collects nothing.
 
 - **What's open:** in a browser, the page's address, cut down to the site and page (`github.com/AtharvGogia/Inkling-for-Windows/issues`); the part after `?` or `#`, where search terms and tokens live, is never sent. In other apps, the name of the open file (`report.docx`, `notes.ps1`), read from the window title, never its folder. Nothing is sent from private, Incognito or InPrivate windows. Turn it off in Settings → Privacy.
 
@@ -173,6 +188,7 @@ Developer options of `Inkling.exe`:
 | `--bench model1 [model2 …]` | Runs the benchmark and writes a report to `bench/results` |
 | `--risk-test` | Checks the risky-command rules against sample commands |
 | `--caret-test [seconds]` | Once a second, where the text caret is found in the window in front (sends no input) |
+| `--rewrite "instruction" "text" [model]` | Rewrites the text as the rewrite shortcut would, with `local:<id>` for a local model |
 | `--url-test [seconds]` | Once a second, the page address read from the browser in front, as it would be sent |
 | `--check-update` | Asks GitHub for the latest release |
 | `--render-ui <folder> [light\|dark]` | Saves pictures of the Settings tabs and the welcome window |
@@ -188,7 +204,7 @@ Any other option prints this list instead of starting Inkling.
 dotnet test Inkling.Tests
 ```
 
-149 unit tests: the risky-command rules, snippets, answer cleaning (including keeping code indentation), spotting code requests and code sites, shortcut parsing, the prompt, per-app hints, update tags, the corner badge, reading the open file from window titles, trimming page addresses, and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
+178 unit tests: the risky-command rules, snippets, answer cleaning (including keeping code indentation, and what can be typed while an answer streams in), rewrites, spotting code requests and code sites, shortcut parsing, the prompt, per-app hints, update tags, the corner badge, reading the open file from window titles, trimming page addresses, and the benchmark graders. The keyboard hooks and typing into other apps aren't covered; check those by hand in Notepad and a terminal.
 
 ## How it's put together
 

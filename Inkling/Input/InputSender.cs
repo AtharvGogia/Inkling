@@ -40,6 +40,10 @@ internal static class InputSender
     }
 
     private const ushort VK_V = 0x56;
+    private const uint WM_NULL = 0, SMTO_ABORTIFHUNG = 0x0002;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint SendMessageTimeout(nint hWnd, uint msg, nint wParam, nint lParam, uint flags, uint timeoutMs, out nint result);
 
     /// <summary>
     /// Puts <paramref name="text"/> in with Ctrl+V and then restores the clipboard. For multi-line answers (code):
@@ -60,7 +64,11 @@ internal static class InputSender
             data.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)));
             SelectionReader.Retry(() => { Clipboard.SetDataObject(data, copy: true, retryTimes: 5, retryDelay: 20); return 0; });
             SendCtrlKey(VK_V);
-            await Task.Delay(250); // the app reads the clipboard when it handles the key, not when it's sent
+            // The app reads the clipboard when it gets to the key, not when it's sent; restoring too early would paste
+            // the old clipboard. Wait until its window answers a message (it's past the key), plus a margin.
+            await Task.Delay(80);
+            await Task.Run(() => SendMessageTimeout(targetHwnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 2000, out _));
+            await Task.Delay(150);
         }
         finally { SelectionReader.Restore(saved); }
     }
